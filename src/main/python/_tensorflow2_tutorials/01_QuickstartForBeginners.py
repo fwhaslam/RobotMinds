@@ -4,8 +4,8 @@
 #
 #   This is a Perceptron ( simple linear NN ), analyzing the MNIST Handwritten Digit dataset.
 #
-#   This code is identical to what is presented on that page:
-#       with some comments added.
+#   This code is identical to what is presented on the tutorial page except for:
+#       some comments are added for clarity
 #
 #   Code tested with:
 #       Tensorflow 2.8.0/cpuOnly  ( complains about Cudart64_110.dll, but functions )

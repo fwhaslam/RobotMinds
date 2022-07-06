@@ -6,8 +6,8 @@
 #
 #   NOTE: the process will pause when images are displayed
 #
-#   This code is identical to what is presented on that page:
-#       with some comments added
+#   This code is identical to what is presented on the tutorial page except for:
+#       some comments are added for clarity
 #       'print' statements wrapped around alternate exit points ( displays information instead )
 #
 #   Code tested with:
