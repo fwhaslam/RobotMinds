@@ -2,6 +2,13 @@
 **.iml
 .idea/
 
+
+# tensorflow checkpoints
+**/training_checkpoints
+**/image_at_epoch_*.png
+
+
+# Python oriented gitignore provided by github
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
