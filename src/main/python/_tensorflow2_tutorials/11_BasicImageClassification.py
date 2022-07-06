@@ -12,6 +12,7 @@
 #
 #   Code tested with:
 #       Tensorflow 2.8.0/cpuOnly  ( complains about Cudart64_110.dll, but functions )
+#       Tensorflow 2.9.l / Cuda 11.7 / CudaNN 8.4 / VC_Redist 2019+
 #
 
 # TensorFlow and tf.keras
