@@ -3,9 +3,10 @@
 .idea/
 
 
-# tensorflow checkpoints
+# tensorflow checkpoints and savefiles
 **/training_checkpoints
 **/image_at_epoch_*.png
+**/dcgan.gif
 
 
 # Python oriented gitignore provided by github
