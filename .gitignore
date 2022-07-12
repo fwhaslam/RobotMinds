@@ -7,6 +7,9 @@
 **/training_checkpoints
 **/image_at_epoch_*.png
 **/dcgan.gif
+**checkpoint
+**.index
+**.data-**
 
 
 # Python oriented gitignore provided by github
