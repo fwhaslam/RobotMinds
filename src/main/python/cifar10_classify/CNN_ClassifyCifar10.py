@@ -36,77 +36,52 @@ test_labels = test_label_array[:,0]
 class_names = ['Plane', 'Car', 'Bird', 'Cat', 'Deer',
                'Dog', 'Frog', 'Horse', 'Ship', 'Truck']
 
-CHECKPOINT_FILE = 'perceptron_cifar10_ckpt'
+CHECKPOINT_FILE = 'cnn_cifar10_ckpt'
 plt.ion()
 
 # check the dataset parameters
-print("train[s]=", str(train_images.shape) )
-print("len=", str(len(train_labels)) )
-print("train labels = ", str(train_labels.shape) )
-print("test labels = ", str(test_labels.shape) )
-print("image shape = ", str(test_images.shape) )
-print("len(labels) = ", len(test_labels) )
-
-# inspect first image in dataset
-lastFigure = plt.figure()
-plt.imshow(train_images[0])
-plt.colorbar()
-plt.grid(False)
-plt.show()
-plt.pause(10)
+print("train_images.shape=", str(train_images.shape) )
+print("train_labels.shape = ", str(train_labels.shape) )
+print("test_image.shape = ", str(test_images.shape) )
+print("test_labels.shape = ", str(test_labels.shape) )
+print("class_names.len = ", len(class_names) )
+print()
 
 # scale image values
 train_images = train_images / 255.0
 test_images = test_images / 255.0
 
-# display first 25 images
-plt.close( lastFigure )
-lastFigure = plt.figure(figsize=(10,10))
-for i in range(25):
-    plt.subplot(5,5,i+1)
-    plt.xticks([])
-    plt.yticks([])
-    plt.grid(False)
-    plt.imshow(train_images[i], cmap=plt.cm.binary)
-    plt.xlabel(class_names[train_labels[i]])
-plt.show()
-plt.pause(10)
-
 # create and train model
-# this model is over 60% at epoch 50 and over 70% at epoch 100
+# this has accuracy 95% at epoch 12 / 98% at epoch 25
 def create_model():
-    return tf.keras.Sequential([
-        tf.keras.layers.Flatten(input_shape=(32, 32, 3)),
-        tf.keras.layers.Dense(1024, activation='relu'),
-        tf.keras.layers.Dense(128, activation='relu'),
-        tf.keras.layers.Dense(len(class_names))
-    ])
+    model = models.Sequential()
+    model.add(layers.Conv2D(64, (3, 3), activation='relu', input_shape=(32, 32, 3)))
+    model.add(layers.Flatten())
+    model.add(layers.Dense(128, activation='relu'))
+    model.add(layers.Dense(10))
+    return model
 
 model = create_model()
+print()
 
+model.summary()
 model.compile(optimizer='adam',
               loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
               metrics=['accuracy'])
-
 stfu.try_load_weights( CHECKPOINT_FILE, model )
 
 model.fit(train_images, train_labels, epochs=50)
-
 test_loss, test_acc = model.evaluate(test_images,  test_labels, verbose=2)
-
 print('\nTest accuracy:', test_acc)
 
 # make predictions
 probability_model = tf.keras.Sequential([model,
                                          tf.keras.layers.Softmax()])
-
 predictions = probability_model.predict(test_images)
-
-print("pred="+ str(predictions[0]) )
+print("\npred="+ str(predictions[0]) )
 
 np.argmax(predictions[0])
-
-print("tlab="+ str(test_labels[0]) )
+print("\ntlab="+ str(test_labels[0]) )
 
 def plot_image(i, predictions_array, true_label, img):
     true_label, img = true_label[i], img[i]
@@ -141,30 +116,8 @@ def plot_value_array(i, predictions_array, true_label):
 
 model.save_weights( CHECKPOINT_FILE )
 
-# verify predictions
-plt.close( lastFigure )
-i = 0
-lastFigure = plt.figure(figsize=(6,3))
-plt.subplot(1,2,1)
-plot_image(i, predictions[i], test_labels, test_images)
-plt.subplot(1,2,2)
-plot_value_array(i, predictions[i],  test_labels)
-plt.show()
-plt.pause( 10 )
-
-plt.close( lastFigure );
-i = 12
-plt.figure(figsize=(6,3))
-plt.subplot(1,2,1)
-plot_image(i, predictions[i], test_labels, test_images)
-plt.subplot(1,2,2)
-plot_value_array(i, predictions[i],  test_labels)
-plt.show()
-plt.pause( 10 )
-
 # Plot the first X test images, their predicted labels, and the true labels.
 # Color correct predictions in blue and incorrect predictions in red.
-plt.close( lastFigure )
 num_rows = 5
 num_cols = 3
 num_images = num_rows*num_cols
