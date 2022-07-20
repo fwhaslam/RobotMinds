@@ -13,6 +13,10 @@
 #       loading 'test' data instead of splitting 'train' data
 #       load image using keras instead of cv2
 #       refactored image displays as a method
+#
+#   Code tested with:
+#       Tensorflow 2.9.l / Cuda 11.7 / CudaNN 8.4 / VC_Redist 2019+
+#
 
 import os
 import numpy as np # linear algebra
