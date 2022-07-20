@@ -99,7 +99,7 @@ def create_model():
     model.add(keras.layers.Flatten())
     model.add(keras.layers.Dense(80, activation='relu'))
     model.add(keras.layers.Dense(16, activation='relu'))
-    model.add(keras.layers.Dense(1, activation='sigmoid'))
+    model.add(keras.layers.Dense(1, activation='sigmoid')) # for binary data
     return model
 
 model = create_model()
