@@ -10,9 +10,11 @@
 #   This code is identical to what is presented on the tutorial page except for:
 #       header comments added
 #       added plt.show() so plt calls will display images
+#       called plt.ion() so that images processing will continue after showing images
 #
 #   Code tested with:
 #       Tensorflow 2.8.0/cpuOnly  ( complains about Cudart64_110.dll, but functions )
+#       Tensorflow 2.9.l / Cuda 11.7 / CudaNN 8.4 / VC_Redist 2019+
 #
 
 
@@ -28,6 +30,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 mpl.rcParams['figure.figsize'] = (12, 12)
 mpl.rcParams['axes.grid'] = False
+plt.ion()
 
 import numpy as np
 import PIL.Image
@@ -72,6 +75,7 @@ def imshow(image, title=None):
     if title:
         plt.title(title)
     plt.show()
+    plt.pause(3)
 
 content_image = load_img(content_path)
 style_image = load_img(style_path)
