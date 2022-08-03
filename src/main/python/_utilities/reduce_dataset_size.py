@@ -11,7 +11,8 @@ from pathlib import Path
 
 # TODO: reduce_factor = Skip all but one out of this many files.
 #                       So '10' would means keep 1/10th of the files.
-REDUCE_FACTOR = 32
+# REDUCE_FACTOR = 32
+REDUCE_FACTOR = 128
 
 # TODO: should we erase an existing destination folder?
 OVERWRITE = True
@@ -22,7 +23,8 @@ local_source_path = '~/_Workspace/Datasets/KaggleCartoon/cartoon_classification'
 source_path = Path( os.path.expanduser( local_source_path ) )
 
 # TODO: replace with path to your local path to the destination dataset.
-local_destination_path = '~/_Workspace/Datasets/KaggleCartoonReduced/cartoon_classification'
+# local_destination_path = '~/_Workspace/Datasets/KaggleCartoonReduced/cartoon_classification'
+local_destination_path = '~/_Workspace/Datasets/KaggleCartoonTiny/cartoon_classification'
 destination_path = Path( os.path.expanduser( local_destination_path ) )
 
 

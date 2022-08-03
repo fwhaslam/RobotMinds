@@ -28,6 +28,8 @@ For the GPU rendering I needed to install:
 
 ## History ( latest first )
 
+2022/07/24 = added utility to reduce datasets locally
+
 2022/07/20 = modified CNN_direct_cartoon_classify to use the image_dataset_from_directory method.
     to CNN_idfd_cartoon_classify.py
 
