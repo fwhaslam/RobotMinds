@@ -28,6 +28,10 @@ For the GPU rendering I needed to install:
 
 ## History ( latest first )
 
+2022/08/03 = Modified 91_StyleTransfer.py to use an AdventureTime image for style
+    The results were disappointing, colors and shapes were transfered, but not at a global scale.
+    to /style/Dog_AdventureTime_StyleTransfer.py
+
 2022/07/24 = added utility to reduce datasets locally
 
 2022/07/20 = modified CNN_direct_cartoon_classify to use the image_dataset_from_directory method.
