@@ -28,6 +28,12 @@ For the GPU rendering I needed to install:
 
 ## History ( latest first )
 
+2022/08/03 = Modified the CycleGAN_Horse2Zebra.py code to use an AdventureTime image dataset
+    instead of zebras.  The results were dissapointing.  The images retained the horse shape,
+    but became broad swathes of adventure time color based on broad swathes of similar shading
+    in the horse image.  It never picked up on the 'dark outline' for cartoon.
+    to /horseZebra_transform/CycleGAN_Horse2AdventureTime.py
+
 2022/08/03 = Modified 91_StyleTransfer.py to use an AdventureTime image for style
     The results were disappointing, colors and shapes were transfered, but not at a global scale.
     to /style/Dog_AdventureTime_StyleTransfer.py

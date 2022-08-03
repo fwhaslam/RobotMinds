@@ -10,6 +10,7 @@
 **checkpoint
 **.index
 **.data-**
+**_ckpt/
 
 
 # Python oriented gitignore provided by github

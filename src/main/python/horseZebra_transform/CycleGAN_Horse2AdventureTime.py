@@ -1,19 +1,23 @@
 #
 #   Tensorflow Cycle Generative Adversarial Network.
 #
-#   This Cycle GAN converts images from horse to zebra and back.
+#   This Cycle GAN converts images from horse to adventure time and back.
 #
-#   This is a copy of 75_CycleGAN_Horse2Zebra.py with the following changes:
-#       Processing does not pause for displayed images.
-#       Old images are closed as new images are opened
-#       The focal image rotates through the dataset so we can can see progress on multiple images.
-#       Methods have been extracted to a shared function file.
+#   Analysis:
+#       Shaped comes from the source image, coloring from the target.
+#       This did not learn to outline images with dark lines,
+#       I tried to emphasize the dark lines by changing the interpolation algorithm,
+#       this made the dark lines more explicit in the image, but did not transfer in the learning.
+#
+#   This is a copy of CycleGAN_Horse2Zebra.py.py with the following changes:
+#       The zebra dataset has been replaced with an adventure time dataset.
 #
 #   Code tested with:
 #       Tensorflow 2.9.l / Cuda 11.7 / CudaNN 8.4 / VC_Redist 2019+
 #
 
 import tensorflow as tf
+from tensorflow import keras,image
 
 import tensorflow_datasets as tfds
 from tensorflow_examples.models.pix2pix import pix2pix
@@ -23,6 +27,10 @@ import time
 import matplotlib.pyplot as plt
 from IPython.display import clear_output
 
+import numpy as np
+from pathlib import Path
+
+import CycleGAN_SharedFunctions as funcs
 from CycleGAN_SharedFunctions import *
 
 # configuration and datasets
@@ -32,69 +40,85 @@ plt.interactive(True)
 dataset, metadata = tfds.load('cycle_gan/horse2zebra',
                               with_info=True, as_supervised=True)
 
-train_horses, train_zebras = dataset['trainA'], dataset['trainB']
-test_horses, test_zebras = dataset['testA'], dataset['testB']
+train_setA, train_setB = dataset['trainA'], dataset['trainB']
+test_setA, test_setB = dataset['testA'], dataset['testB']
+
+print("train_setA=",train_setA)
+# print("train_setA.len=",len(list(train_setA)))
+print("test_setA=",test_setA)
+# print("test_setA.len=",len(list(test_setA)))
+
+describe_setA = 'Horse'
+describe_setB = 'Cartoon'
+
+# OBJECT NAME =  PrefetchDataset
+# OBJECT MODULE =  tensorflow.python.data.ops.dataset_ops
+# print("OBJECT NAME = ",type(train_setA).__name__)
+# print("OBJECT MODULE = ",type(train_setA).__module__)
 
 BUFFER_SIZE = 1000
 BATCH_SIZE = 1
-# IMG_WIDTH = 256
-# IMG_HEIGHT = 256
-# GPU_REST_SECONDS = 20
-#
-# def random_crop(image):
-#     cropped_image = tf.image.random_crop(
-#         image, size=[IMG_HEIGHT, IMG_WIDTH, 3])
-#
-#     return cropped_image
-#
-# # normalizing the images to [-1, 1]
-# def normalize(image):
-#     image = tf.cast(image, tf.float32)
-#     image = (image / 127.5) - 1
-#     return image
-#
-# def random_jitter(image):
-#     # resizing to 286 x 286 x 3
-#     image = tf.image.resize(image, [286, 286],
-#                             method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
-#
-#     # randomly cropping to 256 x 256 x 3
-#     image = random_crop(image)
-#
-#     # random mirroring
-#     image = tf.image.random_flip_left_right(image)
-#
-#     return image
-#
-# def preprocess_image_train(image, label):
-#     image = random_jitter(image)
-#     image = normalize(image)
-#     return image
-#
-# def preprocess_image_test(image, label):
-#     image = normalize(image)
-#     return image
+EPOCHS = 2000
+checkpoint_path = "./advent_ckpt/train"
 
-train_horses = train_horses.cache().map(
+funcs.preferred_resize_method = tf.image.ResizeMethod.BILINEAR
+
+######################################
+#   Adventure Time path
+
+root_path = os.path.expanduser( '~/_Workspace/Datasets/KaggleCartoonTiny/cartoon_classification' )
+
+# img_height = 180
+# img_width = 320
+# batch_size = 32
+
+# fred: switch to match 'horse' image size
+img_height = 256
+img_width = 256
+
+
+advent_train_ds = tf.keras.utils.image_dataset_from_directory(
+    Path( root_path ) / "TRAIN" / "adventure_time",
+    label_mode = None,
+    image_size=(img_height, img_width),
+    interpolation=funcs.preferred_resize_method
+)
+
+
+advent_test_ds = tf.keras.utils.image_dataset_from_directory(
+    Path( root_path ) / "Test" / "adventure_time",
+    label_mode = None,
+    image_size=(img_height, img_width),
+    interpolation=funcs.preferred_resize_method
+)
+
+train_setB =  advent_train_ds.unbatch().prefetch( BATCH_SIZE )
+print("train_setB = ", train_setB )
+test_setB = advent_test_ds.unbatch().prefetch( BATCH_SIZE )
+print("test_setB = ", test_setB )
+
+###################################################
+
+train_setA = train_setA.cache().map(
     preprocess_image_train, num_parallel_calls=AUTOTUNE).shuffle(
     BUFFER_SIZE).batch(BATCH_SIZE)
 
-train_zebras = train_zebras.cache().map(
+train_setB = train_setB.cache().map(
     preprocess_image_train, num_parallel_calls=AUTOTUNE).shuffle(
     BUFFER_SIZE).batch(BATCH_SIZE)
 
-test_horses = test_horses.map(
+test_setA = test_setA.map(
     preprocess_image_test, num_parallel_calls=AUTOTUNE).cache().shuffle(
     BUFFER_SIZE).batch(BATCH_SIZE)
 
-test_zebras = test_zebras.map(
+test_setB = test_setB.map(
     preprocess_image_test, num_parallel_calls=AUTOTUNE).cache().shuffle(
     BUFFER_SIZE).batch(BATCH_SIZE)
 
 # select one horse/zebra for demonstrating progress :: Display alongside generator images
-sample_horse = next(iter(train_horses))
-sample_zebra = next(iter(train_zebras))
-horse_loop = iter(MyLoop(train_horses))
+sample_setA = next(iter(train_setA))
+sample_setB = next(iter(train_setB))
+loop_setA = iter(MyLoop(train_setA))
 
 OUTPUT_CHANNELS = 3
 
@@ -104,43 +128,7 @@ generator_f = pix2pix.unet_generator(OUTPUT_CHANNELS, norm_type='instancenorm')
 discriminator_x = pix2pix.discriminator(norm_type='instancenorm', target=False)
 discriminator_y = pix2pix.discriminator(norm_type='instancenorm', target=False)
 
-
-# def display_generator_comparison( ):
-#     plt.subplot(121)
-#     plt.title('Horse')
-#     plt.imshow(sample_horse[0] * 0.5 + 0.5)
-#
-#     plt.subplot(122)
-#     plt.title('Horse with random jitter')
-#     plt.imshow(random_jitter(sample_horse[0]) * 0.5 + 0.5)
-#
-#     plt.subplot(121)
-#     plt.title('Zebra')
-#     plt.imshow(sample_zebra[0] * 0.5 + 0.5)
-#
-#     plt.subplot(122)
-#     plt.title('Zebra with random jitter')
-#     plt.imshow(random_jitter(sample_zebra[0]) * 0.5 + 0.5)
-#
-#     to_zebra = generator_g(sample_horse)
-#     to_horse = generator_f(sample_zebra)
-#     plt.figure(figsize=(8, 8))
-#     contrast = 8
-#
-#     imgs = [sample_horse, to_zebra, sample_zebra, to_horse]
-#     title = ['Horse', 'To Zebra', 'Zebra', 'To Horse']
-#
-#     for i in range(len(imgs)):
-#         plt.subplot(2, 2, i+1)
-#         plt.title(title[i])
-#         if i % 2 == 0:
-#             plt.imshow(imgs[i][0] * 0.5 + 0.5)
-#         else:
-#             plt.imshow(imgs[i][0] * 0.5 * contrast + 0.5)
-#     plt.show()
-#     plt.pause(1) # show on startup
-
-display_generator_comparison( gen_g=generator_g, gen_f=generator_f, samp_h=sample_horse, samp_z=sample_zebra)
+display_generator_comparison( gen_g=generator_g, gen_f=generator_f, samp_h=sample_setA, samp_z=sample_setB)
 
 # demonstrate the 'real horse/zebra' analysis
 
@@ -148,12 +136,12 @@ def display_reality_analysis():
     plt.figure(figsize=(8, 8))
 
     plt.subplot(121)
-    plt.title('Is a real zebra?')
-    plt.imshow(discriminator_y(sample_zebra)[0, ..., -1], cmap='RdBu_r')
+    plt.title('Is a real '+describe_setB+'?')
+    plt.imshow(discriminator_y(sample_setB)[0, ..., -1], cmap='RdBu_r')
 
     plt.subplot(122)
-    plt.title('Is a real horse?')
-    plt.imshow(discriminator_x(sample_horse)[0, ..., -1], cmap='RdBu_r')
+    plt.title('Is a real '+describe_setA+'?')
+    plt.imshow(discriminator_x(sample_setA)[0, ..., -1], cmap='RdBu_r')
 
     plt.show()
     plt.pause(1) # show on startup
@@ -191,8 +179,6 @@ generator_f_optimizer = tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
 discriminator_x_optimizer = tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
 discriminator_y_optimizer = tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
 
-checkpoint_path = "./zebra_ckpt/train"
-
 ckpt = tf.train.Checkpoint(generator_g=generator_g,
                            generator_f=generator_f,
                            discriminator_x=discriminator_x,
@@ -208,8 +194,6 @@ ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_path, max_to_keep=5)
 if ckpt_manager.latest_checkpoint:
     ckpt.restore(ckpt_manager.latest_checkpoint)
     print ('Latest checkpoint restored!!')
-
-EPOCHS = 40
 
 def generate_images(model, test_input):
     prediction = model(test_input)
@@ -295,16 +279,16 @@ for epoch in range(EPOCHS):
     start = time.time()
 
     n = 0
-    for image_x, image_y in tf.data.Dataset.zip((train_horses, train_zebras)):
+    for image_x, image_y in tf.data.Dataset.zip((train_setA, train_setB)):
         train_step(image_x, image_y)
         if n % 10 == 0:
             print ('.', end='')
         n += 1
 
     clear_output(wait=True)
-    # Using a consistent image (sample_horse) so that the progress of the model
+    # Using a consistent image (sample_setA) so that the progress of the model
     # is clearly visible.
-    next_sample = next( horse_loop )
+    next_sample = next( loop_setA )
     generate_images(generator_g, next_sample)
 
     if (epoch + 1) % 5 == 0:
@@ -316,6 +300,6 @@ for epoch in range(EPOCHS):
                                                         time.time()-start))
 
 # Run the trained model on the test dataset
-for inp in test_horses.take(5):
+for inp in test_setA.take(5):
     generate_images(generator_g, inp)
 

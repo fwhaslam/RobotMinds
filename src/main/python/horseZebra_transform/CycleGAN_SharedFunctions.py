@@ -12,6 +12,9 @@ IMG_WIDTH = 256
 IMG_HEIGHT = 256
 GPU_REST_SECONDS = 20
 
+preferred_resize_method = tf.image.ResizeMethod.NEAREST_NEIGHBOR
+preferred_antialias = True
+
 class MyLoop:
     def __init__(self,looper):
         self.looper = looper
@@ -41,8 +44,7 @@ def normalize(image):
 
 def random_jitter(image):
     # resizing to 286 x 286 x 3
-    image = tf.image.resize(image, [286, 286],
-                            method=tf.image.ResizeMethod.NEAREST_NEIGHBOR)
+    image = tf.image.resize(image, [286, 286], method=preferred_resize_method, antialias=preferred_antialias )
 
     # randomly cropping to 256 x 256 x 3
     image = random_crop(image)
@@ -52,12 +54,12 @@ def random_jitter(image):
 
     return image
 
-def preprocess_image_train(image, label):
+def preprocess_image_train(image, label='can ignore'):
     image = random_jitter(image)
     image = normalize(image)
     return image
 
-def preprocess_image_test(image, label):
+def preprocess_image_test(image, label='can ignore'):
     image = normalize(image)
     return image
 
