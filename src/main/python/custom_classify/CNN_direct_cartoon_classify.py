@@ -26,7 +26,7 @@ root_path = os.path.expanduser( '~/_Workspace/Datasets/KaggleCartoon/cartoon_cla
 
 # load feature + labels
 IMAGE_SIZE = ( 180, 320, 3 )
-IMAGE_RESIZE = list(IMAGE_SIZE[:2])     #  [200,200]
+IMAGE_RESIZE = list(IMAGE_SIZE[:2])     #  [180,320]
 EPOCHS = 10
 SKIP = 32       # only process one out of SKIP from available images
 
