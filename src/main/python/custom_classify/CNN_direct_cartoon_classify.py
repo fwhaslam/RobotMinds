@@ -22,11 +22,11 @@ from tensorflow import image, keras
 from pathlib import Path
 
 # TODO: modify path to match local user-space
-root_path = os.path.expanduser( '~/_Workspace/Datasets/KaggleCartoon/cartoon_classification' )
+root_path = os.path.expanduser( 'd:/Datasets/KaggleCartoon/cartoon_classification' )
 
 # load feature + labels
 IMAGE_SIZE = ( 180, 320, 3 )
-IMAGE_RESIZE = list(IMAGE_SIZE[:2])     #  [180,320]
+IMAGE_RESIZE = list(IMAGE_SIZE[:2])     #  [wide,tall]
 EPOCHS = 10
 SKIP = 32       # only process one out of SKIP from available images
 
