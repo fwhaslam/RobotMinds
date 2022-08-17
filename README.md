@@ -28,6 +28,10 @@ For the GPU rendering I needed to install:
 
 ## History ( latest first )
 
+2020/08/16 = moved horseZebra_transform/ files to cycle_gan/
+    Added _examples/example_loss_function.py where I experiment with shapes + loss formats.
+    Added _examples/example_load_video.py which loads the first frame of a dataset of videos.
+
 2022/08/03 = Modified the CycleGAN_Horse2Zebra.py code to use an AdventureTime image dataset
     instead of zebras.  The results were dissapointing.  The images retained the horse shape,
     but became broad swathes of adventure time color based on broad swathes of similar shading
