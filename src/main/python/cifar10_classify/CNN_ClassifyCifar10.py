@@ -16,6 +16,9 @@
 #   Code tested with:
 #
 
+import sys
+sys.path.insert(0, '../_utilities')
+
 # TensorFlow and tf.keras
 import tensorflow as tf
 from tensorflow.keras import datasets, layers, models
@@ -23,7 +26,7 @@ from tensorflow.keras import datasets, layers, models
 # Helper libraries
 import numpy as np
 import matplotlib.pyplot as plt
-import shared_tf_utilities as stfu
+import tf_classify_tools as tfct
 
 print(tf.__version__)
 
@@ -68,7 +71,7 @@ model.summary()
 model.compile(optimizer='adam',
               loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
               metrics=['accuracy'])
-stfu.try_load_weights( CHECKPOINT_FILE, model )
+tfct.try_load_weights( CHECKPOINT_FILE, model )
 
 model.fit(train_images, train_labels, epochs=50)
 test_loss, test_acc = model.evaluate(test_images,  test_labels, verbose=2)
