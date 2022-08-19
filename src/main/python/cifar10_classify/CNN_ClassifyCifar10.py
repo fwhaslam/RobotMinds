@@ -14,10 +14,11 @@
 #       Added layer to perceptron, taking epoch 50 performance from ~50% to ~60%
 #
 #   Code tested with:
+#       Tensorflow 2.9.l / Cuda 11.7 / CudaNN 8.4 / VC_Redist 2019+
 #
 
 import sys
-sys.path.insert(0, '../_utilities')
+sys.path.append('..')
 
 # TensorFlow and tf.keras
 import tensorflow as tf
@@ -26,7 +27,7 @@ from tensorflow.keras import datasets, layers, models
 # Helper libraries
 import numpy as np
 import matplotlib.pyplot as plt
-import tf_classify_tools as tfct
+import _utilities.tf_classify_tools as tfct
 
 print(tf.__version__)
 
