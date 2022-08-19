@@ -13,6 +13,9 @@
 #       Tensorflow 2.9.l / Cuda 11.7 / CudaNN 8.4 / VC_Redist 2019+
 #
 
+import sys
+sys.path.append('..')
+
 import tensorflow as tf
 
 import tensorflow_datasets as tfds
@@ -23,7 +26,7 @@ import time
 import matplotlib.pyplot as plt
 from IPython.display import clear_output
 
-from CycleGAN_SharedFunctions import *
+from _utilities.tf_cyclegan_tools import *
 
 # configuration and datasets
 AUTOTUNE = tf.data.AUTOTUNE

@@ -16,6 +16,9 @@
 #       Tensorflow 2.9.l / Cuda 11.7 / CudaNN 8.4 / VC_Redist 2019+
 #
 
+import sys
+sys.path.append('..')
+
 import tensorflow as tf
 from tensorflow import keras,image
 
@@ -30,8 +33,8 @@ from IPython.display import clear_output
 import numpy as np
 from pathlib import Path
 
-import CycleGAN_SharedFunctions as funcs
-from CycleGAN_SharedFunctions import *
+import _utilities.tf_cyclegan_tools as funcs
+from _utilities.tf_cyclegan_tools import *
 
 # configuration and datasets
 AUTOTUNE = tf.data.AUTOTUNE
