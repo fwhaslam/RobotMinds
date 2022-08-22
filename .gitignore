@@ -13,6 +13,10 @@
 **_ckpt/
 
 
+# local image files ( usually created by plot_model )
+**.png
+
+
 # Python oriented gitignore provided by github
 # Byte-compiled / optimized / DLL files
 __pycache__/

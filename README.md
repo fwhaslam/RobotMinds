@@ -28,9 +28,11 @@ For the GPU rendering I needed to install:
 
 ## History ( latest first )
 
-2022/08/21 = rewriting cartoon classifier using functional api
+2022/08/21 = Rewriting cartoon classifier using functional api.
+        Rewriting cartoon classifier using resnet convolutional ( projection ) blocks.
+        Setup so we can use 'plot_model' method to create images of the model.
 
-2022/08/16 = moved horseZebra_transform/ files to cycle_gan/
+2022/08/16 = Moved horseZebra_transform/ files to cycle_gan/
     Added _examples/example_loss_function.py where I experiment with shapes + loss formats.
     Added _examples/example_load_video.py which loads the first frame of a dataset of videos.
 
