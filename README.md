@@ -28,6 +28,8 @@ For the GPU rendering I needed to install:
 
 ## History ( latest first )
 
+2022/08/22 = pulling load_video from example_load_video into toolkit
+
 2022/08/21 = Rewriting cartoon classifier using functional api.
         Rewriting cartoon classifier using resnet convolutional ( projection ) blocks.
         Setup so we can use 'plot_model' method to create images of the model.
