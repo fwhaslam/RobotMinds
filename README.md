@@ -77,7 +77,3 @@ For the GPU rendering I needed to install:
     to /_tensorflow_tutorials
 
 
-
-## Stuff ( merge with TODOS.md )
-
-create a StochasticPool2D method which picks a random value from the pool space ( see MaxPool2D ).
