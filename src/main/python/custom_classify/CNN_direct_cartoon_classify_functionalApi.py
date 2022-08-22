@@ -3,14 +3,10 @@
 #       https://www.kaggle.com/datasets/volkandl/cartoon-classification
 #
 #   Source code from:
-#       local source CNN_direct_hotdog_classify.py
+#       local source CNN_direct_cartoon_classify.py
 #
 #   This is a copy of the code with the following changes:
-#       switch to Kaggle Cartoon dataset
-#       change IMAGE_SIZE, used IMAGE_SIZE in place of static values
-#       added SKIP to reduce dataset to 1/32 in size ( skipping to every 32nd image )
-#       fixed model + loss function to handle multiple categories
-#       reduced model size to fit my local memory
+#       Using Functional API to produce model
 #
 #   Code tested with:
 #       Tensorflow 2.9.l / Cuda 11.7 / CudaNN 8.4 / VC_Redist 2019+
@@ -92,20 +88,19 @@ display_image_grid( 'Sample Images', train_features[::skip_images] )
 #   CNNs used for rapid dropoff of image size
 #   this usually surpasses 95% by epoch 10
 #
-def create_model():
-    model = keras.models.Sequential()
-    model.add(keras.Input(shape=IMAGE_SIZE))
-    model.add(keras.layers.Conv2D(32, (3, 3), activation='relu' ))
-    model.add(keras.layers.MaxPooling2D(2))
-    model.add(keras.layers.Conv2D(64, (3, 3), activation='relu' ))
-    model.add(keras.layers.MaxPooling2D(2))
-    model.add(keras.layers.Conv2D(96, (2, 2), activation='relu' ))
-    model.add(keras.layers.Flatten())
-    model.add(keras.layers.Dense(64, activation='relu'))
-    model.add(keras.layers.Dense(10))  # shaped to work with SparseCategoricalCrossentropy
-    return model
+def create_model( input_shape ):
+    input = keras.Input( input_shape )
+    x = keras.layers.Conv2D(32, (3, 3), activation='relu' )(input)
+    x = keras.layers.MaxPooling2D(2)(x)
+    x = keras.layers.Conv2D(64, (3, 3), activation='relu' )(x)
+    x = keras.layers.MaxPooling2D(2)(x)
+    x = keras.layers.Conv2D(96, (2, 2), activation='relu' )(x)
+    x = keras.layers.Flatten()(x)
+    x = keras.layers.Dense(64, activation='relu')(x)
+    output = keras.layers.Dense(10)(x)
+    return keras.Model( inputs=input, outputs=output, name='my_model' )
 
-model = create_model()
+model = create_model( IMAGE_SIZE )
 model.summary()
 
 #

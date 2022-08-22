@@ -28,7 +28,9 @@ For the GPU rendering I needed to install:
 
 ## History ( latest first )
 
-2020/08/16 = moved horseZebra_transform/ files to cycle_gan/
+2022/08/21 = rewriting cartoon classifier using functional api
+
+2022/08/16 = moved horseZebra_transform/ files to cycle_gan/
     Added _examples/example_loss_function.py where I experiment with shapes + loss formats.
     Added _examples/example_load_video.py which loads the first frame of a dataset of videos.
 
@@ -70,3 +72,9 @@ For the GPU rendering I needed to install:
 
 2022/07/04 = Copied in a number of tutorials from Tensorflow.org
     to /_tensorflow_tutorials
+
+
+
+## Stuff ( merge with TODOS.md )
+
+create a StochasticPool2D method which picks a random value from the pool space ( see MaxPool2D ).
