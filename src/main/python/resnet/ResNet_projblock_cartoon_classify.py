@@ -19,8 +19,8 @@ from pathlib import Path
 import tf_resnet_tools as resnet
 
 # TODO: modify path to match local user-space
-# root_path = os.path.expanduser( 'd:/Datasets/KaggleCartoon/cartoon_classification' )
-root_path = os.path.expanduser( '~/Desktop/Workspace/Datasets/KaggleCartoonReduced/cartoon_classification' )
+root_path = os.path.expanduser( 'd:/Datasets/KaggleCartoon/cartoon_classification' )
+# root_path = os.path.expanduser( '~/Desktop/Workspace/Datasets/KaggleCartoonReduced/cartoon_classification' )
 
 # load feature + labels
 IMAGE_SIZE = ( 180, 320, 3 )

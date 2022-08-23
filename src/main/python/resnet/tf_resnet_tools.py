@@ -4,6 +4,14 @@
 
 import tensorflow as tf
 
+make_norm_layer = lambda : tf.keras.layers.BatchNormalization(axis=3)
+
+def set_make_norm_layer( new_make_norm_layer ):
+    r"""So we can switch from Batch ot Instance normalization.
+    Expects a lambda that constructs an class instance.
+    """
+    make_norm_layer = new_make_norm_layer
+
 #
 #   Simple skip block.  Cannot change image_size nor channel_size.
 #   ? Use when input and output shapes are the same
@@ -13,11 +21,11 @@ def identity_block( input, filter_count, kernel_size=3, stride=1 ):
     x = input
     # Layer 1
     x = tf.keras.layers.Conv2D(filter_count, kernel_size=kernel_size, stride=stride, padding = 'same')( x )
-    x = tf.keras.layers.BatchNormalization(axis=3)(x)
+    x = make_norm_layer()(x)
     x = tf.keras.layers.Activation('relu')(x)
     # Layer 2
     x = tf.keras.layers.Conv2D(filter_count, kernel_size=kernel_size, stride=stride, padding = 'same')(x)
-    x = tf.keras.layers.BatchNormalization(axis=3)(x)
+    x = make_norm_layer()(x)
     # Add Residue
     x = tf.keras.layers.Add()([x, input])
     output = tf.keras.layers.Activation('relu')(x)
@@ -45,11 +53,11 @@ def projection_block( input, filter_count, kernel_size=3, strides=1  ):
     x = input
     # Layer 1
     x = tf.keras.layers.Conv2D(filters=filter_count, kernel_size=kernel_size, padding = 'same', strides=strides)( x )
-    x = tf.keras.layers.BatchNormalization(axis=3)(x)
+    x = make_norm_layer()(x)
     x = tf.keras.layers.Activation('relu')(x)
     # Layer 2
     x = tf.keras.layers.Conv2D(filter_count, kernel_size, strides=1, padding = 'same')(x)
-    x = tf.keras.layers.BatchNormalization(axis=3)(x)
+    x = make_norm_layer()(x)
     # Processing Residue with conv(1,1)
     x_res = tf.keras.layers.Conv2D(filter_count, (1,1), strides=strides)(input)
     # Add Residue
