@@ -121,7 +121,7 @@ test_setB = test_setB.map(
 # select one horse/zebra for demonstrating progress :: Display alongside generator images
 sample_setA = next(iter(train_setA))
 sample_setB = next(iter(train_setB))
-loop_setA = iter(MyLoop(train_setA))
+loop_setA = iter(RepeatLoop(train_setA))
 
 OUTPUT_CHANNELS = 3
 

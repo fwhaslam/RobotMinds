@@ -38,8 +38,14 @@ dataset, metadata = tfds.load('cycle_gan/horse2zebra',
 train_horses, train_zebras = dataset['trainA'], dataset['trainB']
 test_horses, test_zebras = dataset['testA'], dataset['testB']
 
+########################################################################################################################
+#       Constant Parameters
+
 BUFFER_SIZE = 1000
 BATCH_SIZE = 1
+EPOCHS = 40
+checkpoint_path = "zebra_ckpt/train"
+
 # IMG_WIDTH = 256
 # IMG_HEIGHT = 256
 # GPU_REST_SECONDS = 20
@@ -97,7 +103,7 @@ test_zebras = test_zebras.map(
 # select one horse/zebra for demonstrating progress :: Display alongside generator images
 sample_horse = next(iter(train_horses))
 sample_zebra = next(iter(train_zebras))
-horse_loop = iter(MyLoop(train_horses))
+horse_loop = iter(RepeatLoop(train_horses))
 
 OUTPUT_CHANNELS = 3
 
@@ -194,8 +200,6 @@ generator_f_optimizer = tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
 discriminator_x_optimizer = tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
 discriminator_y_optimizer = tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
 
-checkpoint_path = "zebra_ckpt/train"
-
 ckpt = tf.train.Checkpoint(generator_g=generator_g,
                            generator_f=generator_f,
                            discriminator_x=discriminator_x,
@@ -212,7 +216,6 @@ if ckpt_manager.latest_checkpoint:
     ckpt.restore(ckpt_manager.latest_checkpoint)
     print ('Latest checkpoint restored!!')
 
-EPOCHS = 40
 
 def generate_images(model, test_input):
     prediction = model(test_input)
