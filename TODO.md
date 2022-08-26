@@ -35,6 +35,9 @@ create a StochasticPool2D method which picks a random value from the pool space 
 create one cartoon classifier example for both ImageDataGenerator and GeneratorBasedBuilder
     determine if ImageDataGenerator is streaming content ( permits for larger datasets )
 
+implement an 'epoch_save' which records epoch information and statistical history
+    as well as the model weights.
+
 ## Completed Tasks:
 
 example of loading images from video
