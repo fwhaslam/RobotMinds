@@ -28,6 +28,9 @@ For the GPU rendering I needed to install:
 
 ## History ( latest first )
 
+2022/08/27 = Improved resnet version of horse2zebra cyclegan.  
+        This creates zebra stripes but does not recreate the horse shape.
+
 2022/08/25 = First draft on a resnet version of horse2zebra cyclegan.  It is pretty bad.
 
 2022/08/22 = pulling load_video from example_load_video into toolkit

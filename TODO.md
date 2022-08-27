@@ -38,6 +38,14 @@ create one cartoon classifier example for both ImageDataGenerator and GeneratorB
 implement an 'epoch_save' which records epoch information and statistical history
     as well as the model weights.
 
+cyclegan things to try:
+    resnet [done/fail]
+    dense resnet ( use down/up sample code but do 2 or 3 layer skips )
+    dense unet ( same as unet, but more dense than convolution and no skipping )
+    terse unet ( same as unet, but use skip=4)
+    double unet ( start with terse unet, fold twice )
+    unet/resnet criss cross
+
 ## Completed Tasks:
 
 example of loading images from video
