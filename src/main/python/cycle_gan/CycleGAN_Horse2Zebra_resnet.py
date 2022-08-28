@@ -146,7 +146,28 @@ def resizing_layer( size ):
     # return tf.keras.layers.UpSampling2D( size=4, interpolation='area' )
 
 def merge_layer( x, y ):
-    return tf.keras.layers.Add()( [x, y] )
+    return tf.keras.layers.Concatenate()( [x, y] )
+    # return tf.keras.layers.Add()( [x, y] )
+
+class MyCropSize(tf.keras.layers.Layer):
+
+    def __init__(self, y, x, tall, wide):
+        super(MyCropSize, self).__init__()
+        self.y = y
+        self.x = x
+        self.tall = tall
+        self.wide = wide
+
+    def build(self,other):
+        return
+
+    def call(self, inputs):
+        return tf.image.crop_to_bounding_box( inputs, self.y, self.x, self.tall, self.wide )
+
+
+def crop_layer( y, x, tall, wide ):
+    return MyCropSize( y, x, tall, wide )
+
 
 def resnet_generator( output_channels ):
     r"""Starting generator using resnet blocks.
@@ -165,12 +186,12 @@ def resnet_generator( output_channels ):
     x = downsample(256, 4)(x)  # (bs, 32, 32, 256)
     x = downsample(512, 4)(x)  # (bs, 16, 16, 512)
 
-    x1 = tf.keras.layers.Conv2D( 512, 8, strides=8, padding='same')(skip1)
+    x1 = tf.keras.layers.Conv2D( 512, 10, strides=8, padding='same')(skip1)
     skip2 = x = merge_layer( x, x1 )    # (bs, 16, 16, 512/1024)
     x = downsample(512, 4)(x)  # (bs, 8, 8, 512)
     x = downsample(512, 4)(x)  # (bs, 4, 4, 512)
 
-    x2 = tf.keras.layers.Conv2D( 512, 4, strides=4, padding='same')(skip2)
+    x2 = tf.keras.layers.Conv2D( 512, 6, strides=4, padding='same')(skip2)
     skip3 = x = merge_layer( x, x2 )  # (bs, 4, 4, 512/1024)
     x = downsample(512, 4)(x)  # (bs, 2, 2, 512)
     x = downsample(512, 4)(x)  # (bs, 1, 1, 512)
@@ -184,13 +205,15 @@ def resnet_generator( output_channels ):
     x = upsample(512, 4)(x)  # (bs, 8, 8, 512)
     x = upsample(512, 4)(x)  # (bs, 16, 16, 512)
 
-    x4 = tf.keras.layers.Conv2DTranspose( 512, 4, strides=4)(skip4)  # (bs, 16, 16, 512)
+    x4 = tf.keras.layers.Conv2DTranspose( 512, 6, strides=4)(skip4)  # (bs, 16, 16, 512)
+    x4 = crop_layer( 1, 1, 16, 16 )(x4)
     skip5 = x = merge_layer( x, x4 )  # (bs, 16, 16, 512/1024)
     x = upsample(256, 4)(x)  # (bs, 32, 32, 256)
     x = upsample(128, 4)(x)     # (bs, 64, 64, 128)
     x = upsample(64, 4)(x)      # (bs, 128, 128, 64)
 
-    x5 = tf.keras.layers.Conv2DTranspose( 64, 8, strides=8)(skip5)  # (bs, 128, 128, 64)
+    x5 = tf.keras.layers.Conv2DTranspose( 64, 10, strides=8)(skip5)  # (bs, 128, 128, 64)
+    x5 = crop_layer( 1, 1, 128, 128 )(x5)
     x = merge_layer( x, x5 )  # (bs, 128, 128, 64/128)
 
     # cleanup to 3 channels

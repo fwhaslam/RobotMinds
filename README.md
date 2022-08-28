@@ -28,6 +28,9 @@ For the GPU rendering I needed to install:
 
 ## History ( latest first )
 
+2022/08/28 = Improved resnet version of horse2zebra cyclegan.
+        Using Concatenate instead of Add and the underlying image comes through a little to the end.
+
 2022/08/27 = Improved resnet version of horse2zebra cyclegan.  
         This creates zebra stripes but does not recreate the horse shape.
 
