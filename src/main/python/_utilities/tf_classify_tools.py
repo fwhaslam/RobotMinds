@@ -19,7 +19,7 @@ def try_load_weights( ckpt_file, model ) :
     r"""try to load weights for a model, restore default on failure"""
     temp = model.get_weights()
     if os.path.exists(ckpt_file+'.index') :
-        try
+        try:
             model.load_weights( ckpt_file )
         except ( builtins.ValueError, errimp.NotFoundError ) as e1:
             # print('Error Is '+ str(e1.__class__) )

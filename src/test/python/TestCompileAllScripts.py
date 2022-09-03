@@ -1,3 +1,7 @@
+#
+#   Test Script:L ensure that all source scripts compile
+#
+
 import sys
 sys.path.append('../../main/python')
 
@@ -15,5 +19,3 @@ for f in root.rglob('*.py'):
     result = py_compile.compile(path)
     print("Result=",result)
 
-
-# py_compile.compile('_examples/example_load_video.py')
