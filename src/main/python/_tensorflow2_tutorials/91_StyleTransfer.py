@@ -225,6 +225,7 @@ opt = tf.keras.optimizers.Adam(learning_rate=0.02, beta_1=0.99, epsilon=1e-1)
 
 style_weight=1e-2
 content_weight=1e4
+
 def style_content_loss(outputs):
     style_outputs = outputs['style']
     content_outputs = outputs['content']
@@ -237,6 +238,7 @@ def style_content_loss(outputs):
     content_loss *= content_weight / num_content_layers
     loss = style_loss + content_loss
     return loss
+
 @tf.function()
 def train_step(image):
     with tf.GradientTape() as tape:
