@@ -27,7 +27,7 @@ from tensorflow.keras import datasets, layers, models
 # Helper libraries
 import numpy as np
 import matplotlib.pyplot as plt
-import _utilities.tf_classify_tools as tfct
+import _utilities.tf_loading_tools as loader
 
 
 print(tf.__version__)
@@ -93,7 +93,7 @@ model.compile(optimizer='adam',
               loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
               metrics=['accuracy'])
 
-tfct.try_load_weights( CHECKPOINT_FILE, model )
+loader.try_load_weights( CHECKPOINT_FILE, model )
 
 model.fit(train_images, train_labels, epochs=50)
 

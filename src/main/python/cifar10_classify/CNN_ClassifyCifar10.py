@@ -14,7 +14,7 @@
 #       Added layer to perceptron, taking epoch 50 performance from ~50% to ~60%
 #
 #   Code tested with:
-#       Tensorflow 2.9.l / Cuda 11.7 / CudaNN 8.4 / VC_Redist 2019+
+#       Tensorflow 2.9.1 / Cuda 11.7 / CudaNN 8.4 / VC_Redist 2019+
 #
 
 import sys
@@ -27,7 +27,7 @@ from tensorflow.keras import datasets, layers, models
 # Helper libraries
 import numpy as np
 import matplotlib.pyplot as plt
-import _utilities.tf_classify_tools as tfct
+import _utilities.tf_loading_tools as loader
 
 print(tf.__version__)
 
@@ -72,7 +72,7 @@ model.summary()
 model.compile(optimizer='adam',
               loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
               metrics=['accuracy'])
-tfct.try_load_weights( CHECKPOINT_FILE, model )
+loader.try_load_weights( CHECKPOINT_FILE, model )
 
 model.fit(train_images, train_labels, epochs=50)
 test_loss, test_acc = model.evaluate(test_images,  test_labels, verbose=2)
