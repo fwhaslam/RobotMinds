@@ -1,13 +1,25 @@
 import tensorflow as tf
+import inspect
 
-def loss_has_gradient( loss_function ):
+def loss_has_gradient( loss_function, arg_count=1, output_shape=(1,) ):
     r"""Verify that a loss function does not throw a ValueError"""
     try:
-        train_x = tf.constant([[1.]])
-        train_y = tf.constant([[1.]])
+        train_x = tf.ones( [1,] )
+        train_y = tf.ones( [1,] )
+        output_size = tf.size( tf.zeros(output_shape) ) # inefficient, but this is just a test
+
+        def test_func(x,y):
+            r"""Adjust function to arg_count."""
+            fields = [y] * arg_count
+            return loss_function( *fields )
+
         inputs = tf.keras.layers.Input(shape=(1,))
-        model = tf.keras.Model(inputs, tf.keras.layers.Dense(1)(inputs))
-        model.compile(optimizer='sgd', loss=loss_function)
+        hidden = tf.keras.layers.Dense(output_size)(inputs)
+        outputs = tf.keras.layers.Reshape( output_shape )(hidden)
+
+        tf.print('outputs.shape=',outputs.shape)
+        model = tf.keras.Model(inputs, outputs)
+        model.compile(optimizer='sgd', loss=test_func)
         model.fit(train_x, train_y)
         return True
     except ValueError as err:
