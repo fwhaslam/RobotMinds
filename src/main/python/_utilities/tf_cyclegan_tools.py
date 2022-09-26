@@ -1,12 +1,6 @@
 import tensorflow as tf
 
-import tensorflow_datasets as tfds
-from tensorflow_examples.models.pix2pix import pix2pix
-
-import os
-import time
 import matplotlib.pyplot as plt
-from IPython.display import clear_output
 
 IMG_WIDTH = 256
 IMG_HEIGHT = 256
@@ -65,38 +59,28 @@ def preprocess_image_test(image, label='can ignore'):
     return image
 
 
-def display_generator_comparison( gen_g, gen_f, samp_h, samp_z):
-    r"""Show some sample images."""
-    plt.subplot(121)
-    plt.title('Horse')
-    plt.imshow(samp_h[0] * 0.5 + 0.5)
+def generate_images(model_g, model_f, test_input):
+    r"""Display a grid of images showing progress.
+    Images are original, predicted, cycled, and 'same'
+    ( same = original through the same model eg. horse to horse )."""
 
-    plt.subplot(122)
-    plt.title('Horse with random jitter')
-    plt.imshow(random_jitter(samp_h[0]) * 0.5 + 0.5)
+    prediction = model_g(test_input)
+    cycled = model_f(prediction)
+    same = model_f(test_input)
 
-    plt.subplot(121)
-    plt.title('Zebra')
-    plt.imshow(samp_z[0] * 0.5 + 0.5)
+    plt.close()     # close previous image
+    plt.figure(figsize=(12, 12))
 
-    plt.subplot(122)
-    plt.title('Zebra with random jitter')
-    plt.imshow(random_jitter(samp_z[0]) * 0.5 + 0.5)
+    display_list = [test_input[0], prediction[0], cycled[0], same[0]]
+    title = ['Input Image', 'Predicted Image', 'Cycled Image', 'Same Image']
 
-    to_zebra = gen_g(samp_h)
-    to_horse = gen_f(samp_z)
-    plt.figure(figsize=(8, 8))
-    contrast = 8
-
-    imgs = [samp_h, to_zebra, samp_z, to_horse]
-    title = ['Horse', 'To Zebra', 'Zebra', 'To Horse']
-
-    for i in range(len(imgs)):
+    for i in range(4):
         plt.subplot(2, 2, i+1)
         plt.title(title[i])
-        if i % 2 == 0:
-            plt.imshow(imgs[i][0] * 0.5 + 0.5)
-        else:
-            plt.imshow(imgs[i][0] * 0.5 * contrast + 0.5)
+        # getting the pixel values between [0, 1] to plot it.
+        plt.imshow(display_list[i] * 0.3 + 0.3)
+        plt.axis('off')
+
     plt.show()
-    plt.pause(1) # show on startup
+    plt.pause(GPU_REST_SECONDS)
+
