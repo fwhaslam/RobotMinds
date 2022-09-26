@@ -214,7 +214,7 @@ test_horses, test_zebras = dataset['testA'], dataset['testB']
 runner = mgr.cyclegan_runner(
         train_horses, train_zebras, test_horses, test_zebras,
         generator_first=resnet_generator(), generator_second=resnet_generator(),
-        epochs=50, checkpoint_root='zebra_runner_ckpt' )
+        epochs=50, checkpoint_root='zebra_resnet_ckpt' )
 
 runner.run()
 
