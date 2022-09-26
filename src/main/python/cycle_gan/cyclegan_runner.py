@@ -1,13 +1,18 @@
 #
-#   Tensorflow Cycle Generative Adversarial Network.
+#   Tensorflow Cycling Generative Adversarial Network.
 #
-#   This Cycle GAN converts images from horse to zebra and back.
+#   This CycleGAN framework will provide the following:
+#       training, checkpoints, and sampling
 #
-#   This is a copy of CycleGAN_Horse2AdventureTime.py with the following changes:
-#       The generators and discriminators are allocated in local methods using functional api.
+#   It needs the following:
+#       generator models, datasets
+#
+#   Future improvements:
+#       configuration control
+#       sampling at different epochs
 #
 #   Code tested with:
-#       Tensorflow 2.9.l / Cuda 11.7 / CudaNN 8.4 / VC_Redist 2019+
+#       Tensorflow 2.10.0 / Cuda 11.7 / CudaNN 8.4 / VC_Redist 2019+
 #
 #   NOTE: all this nonsense with 'class/self' explains why module is that natural unit of organization
 #
@@ -36,15 +41,16 @@ class cyclegan_runner:
 
     def __init__(self,
                  train_first,train_second,test_first,test_second,
-                 epochs,checkpoint_root,
-                 generator_function:Callable[[],tf.keras.Model]):
+                 generator_first,generator_second,
+                 epochs,checkpoint_root):
         self.train_first = train_first
         self.train_second = train_second
         self.test_first = test_first
         self.test_second = test_second
         self.EPOCHS = epochs
         self.checkpoint_root = checkpoint_root
-        self.generator_function = generator_function
+        self.generator_g = generator_first
+        self.generator_f = generator_second
 
 ########################################################################################################################
 #   Functional Api version of UNet generator from tensorflow_examples.models.pix2pix
@@ -266,9 +272,6 @@ class cyclegan_runner:
         horse_loop = iter(RepeatLoop(self.train_first))
 
 ########################################################################################################################
-
-        self.generator_g = self.generator_function()
-        self.generator_f = self.generator_function()
 
         self.discriminator_x = self.discriminator()
         self.discriminator_y = self.discriminator()

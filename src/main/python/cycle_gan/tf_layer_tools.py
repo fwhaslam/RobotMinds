@@ -71,3 +71,24 @@ def resizing_layer( size ):
     # return tf.keras.layers.Resizing( size, size, interpolation='nearest' )
     # return tf.keras.layers.Resizing( 8,8, interpolation='area' )
     # return tf.keras.layers.UpSampling2D( size=4, interpolation='area' )
+
+class MyCropSize(tf.keras.layers.Layer):
+    r"""Simplified cropping layer."""
+
+    def __init__(self, y, x, tall, wide):
+        super(MyCropSize, self).__init__()
+        self.y = y
+        self.x = x
+        self.tall = tall
+        self.wide = wide
+
+    def build(self,other):
+        return
+
+    def call(self, inputs):
+        return tf.image.crop_to_bounding_box( inputs, self.y, self.x, self.tall, self.wide )
+
+
+def crop_layer( y, x, tall, wide ):
+    r"""Simplified cropping layer."""
+    return MyCropSize( y, x, tall, wide )
