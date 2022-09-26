@@ -11,6 +11,7 @@
 #       InstanceNorm moved to tf_layer_tools along with some shape resizing methods.
 #
 #   Code tested with:
+#       Tensorflow 2.10.0 / Cuda 11.7 / CudaNN 8.4 / VC_Redist 2019+
 #       Tensorflow 2.9.l / Cuda 11.7 / CudaNN 8.4 / VC_Redist 2019+
 #
 
