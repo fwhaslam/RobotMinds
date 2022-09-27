@@ -4,7 +4,7 @@
 #   This Cycle GAN converts images from horse to zebra and back.
 #
 #   What is different here:
-#       Model is using 'resnet' style skipping, with fewer layers.
+#       Model is using 'resnet' style skipping, and the first and second generator share a central layer.
 #
 #   Code tested with:
 #       Tensorflow 2.10.0 / Cuda 11.7 / CudaNN 8.4 / VC_Redist 2019+
@@ -14,14 +14,24 @@
 import sys
 sys.path.append('..')
 
+import tensorflow as tf
+
 import tensorflow_datasets as tfds
+from tensorflow_examples.models.pix2pix import pix2pix
+
+import os
+import time
+import matplotlib.pyplot as plt
+from IPython.display import clear_output
 
 from _utilities.tf_cyclegan_tools import *
 from tf_layer_tools import *
+
 import cyclegan_runner as mgr
 
 ########################################################################################################################
 # construct model
+
 
 def downsample(filters, size, strides=2):
     result = tf.keras.Sequential()
@@ -43,8 +53,17 @@ def merge_layer( x, y ):
     return tf.keras.layers.Concatenate()( [x, y] )
     # return tf.keras.layers.Add()( [x, y] )
 
+def center_layer():
+    inputs = tf.keras.layers.Input( (2,2,512) )
+    x = inputs
+    x = tf.keras.layers.Flatten()(x)                    # ( bs, 2048 )
+    x = tf.keras.layers.Dense( 2048 )(x)                # ( bs, 2048 )
+    x = tf.keras.layers.Reshape( ( 2, 2, 512 ) )(x)     # (bs, 2, 2, 512)
+    outputs = x
+    return tf.keras.Model(inputs=inputs, outputs=outputs)
 
-def resnet_generator( output_channels=3 ):
+
+def resnet_generator( output_channels, middle_layer ):
     r"""Starting generator using resnet blocks.
     Evaluation:
         Round1 = resnet blocks => created brown blocks
@@ -78,9 +97,7 @@ def resnet_generator( output_channels=3 ):
     # x = tf.keras.layers.Flatten()(x)                    # ( bs, 2048 )
     # x = tf.keras.layers.Dense( 2048 )(x)                # ( bs, 2048 )
     # x = tf.keras.layers.Reshape( ( 2, 2, 512 ) )(x)     # (bs, 2, 2, 512)
-
-    x = downsample( 512, 4, 2 )(x)           # (bs, 1, 1, 512)
-    x = upsample(512, 4, 2)(x)          # (bs, 2, 2, 512)
+    x = middle_layer(x)
 
     ###############################
     # upsample layers
@@ -120,10 +137,17 @@ dataset, metadata = tfds.load('cycle_gan/horse2zebra', with_info=True, as_superv
 train_horses, train_zebras = dataset['trainA'], dataset['trainB']
 test_horses, test_zebras = dataset['testA'], dataset['testB']
 
+OUTPUT_CHANNELS = 3
+reuse_layer = center_layer()       # reuse the same middle layer
+
+generator_first = resnet_generator( OUTPUT_CHANNELS, reuse_layer )
+generator_second = resnet_generator( OUTPUT_CHANNELS, reuse_layer )
+
+
 runner = mgr.cyclegan_runner(
         train_horses, train_zebras, test_horses, test_zebras,
-        generator_first=resnet_generator(), generator_second=resnet_generator(),
-        epochs=50, checkpoint_root='zebra_resnet_terse_ckpt' )
+        generator_first=generator_first, generator_second=generator_second,
+        epochs=50, checkpoint_root='zebra_resnet_cross_ckpt' )
 
 runner.run()
 

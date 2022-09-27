@@ -14,19 +14,10 @@
 import sys
 sys.path.append('..')
 
-import tensorflow as tf
-
 import tensorflow_datasets as tfds
-from tensorflow_examples.models.pix2pix import pix2pix
-
-import os
-import time
-import matplotlib.pyplot as plt
-from IPython.display import clear_output
 
 from _utilities.tf_cyclegan_tools import *
 from tf_layer_tools import *
-
 import cyclegan_runner as mgr
 
 ########################################################################################################################
@@ -52,15 +43,13 @@ def merge_layer( x, y ):
     # return tf.keras.layers.Add()( [x, y] )
 
 
-def resnet_generator():
+def resnet_generator(output_channels=3):
     r"""Starting generator using resnet blocks.
     Evaluation:
         Round1 = resnet blocks => created brown blocks
         Round2 = skip every 3 layers, concatenate => Creates pretty stripes, captures some shapes from original image.
         Round3 = more aggressive downsampling to save memory =>runs faster, about the same, some pontillism
     """
-
-    output_channels = 3
 
     inputs = tf.keras.layers.Input(shape=[256, 256, 3])
 

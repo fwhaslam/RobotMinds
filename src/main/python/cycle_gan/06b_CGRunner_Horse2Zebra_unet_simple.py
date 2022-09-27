@@ -14,19 +14,10 @@
 import sys
 sys.path.append('..')
 
-import tensorflow as tf
-
 import tensorflow_datasets as tfds
-from tensorflow_examples.models.pix2pix import pix2pix
-
-import os
-import time
-import matplotlib.pyplot as plt
-from IPython.display import clear_output
 
 from _utilities.tf_cyclegan_tools import *
 from tf_layer_tools import *
-
 import cyclegan_runner as mgr
 
 ########################################################################################################################
@@ -53,7 +44,7 @@ def merge_layer( x, y ):
     # return tf.keras.layers.Add()( [x, y] )
 
 
-def unet_generator( output_channels ):
+def unet_generator( output_channels=3 ):
     r"""Generator skips from front to back, unet style."""
 
     inputs = tf.keras.layers.Input(shape=[256, 256, 3])

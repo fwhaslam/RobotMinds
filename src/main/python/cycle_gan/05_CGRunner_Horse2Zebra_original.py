@@ -18,19 +18,10 @@
 import sys
 sys.path.append('..')
 
-import tensorflow as tf
-
 import tensorflow_datasets as tfds
-from tensorflow_examples.models.pix2pix import pix2pix
-
-import os
-import time
-import matplotlib.pyplot as plt
-from IPython.display import clear_output
 
 from _utilities.tf_cyclegan_tools import *
 from tf_layer_tools import *
-
 import cyclegan_runner as mgr
 
 ########################################################################################################################
@@ -93,7 +84,7 @@ def upsample(filters, size, apply_dropout=False):
     return result
 
 
-def unet_generator():
+def unet_generator(output_channels=3):
     """Modified u-net generator model (https://arxiv.org/abs/1611.07004).
     Args:
       output_channels: Output channels
@@ -101,8 +92,6 @@ def unet_generator():
     Returns:
       Generator model
     """
-
-    output_channels = 3
 
     down_stack = [
         downsample(64, 4, apply_norm=False),  # (bs, 128, 128, 64)
