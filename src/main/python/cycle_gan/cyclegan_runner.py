@@ -227,15 +227,16 @@ class cyclegan_runner:
             cycled = gen_first(prediction)
             same = gen_second(base_image)
 
-            horse_and_predict = tf.concat( [tf.squeeze(base_image),tf.squeeze(prediction)], axis=0 )
-            cycled_and_same = tf.concat( [tf.squeeze(cycled),tf.squeeze(same)], axis=0 )
-            all_images = tf.concat( [horse_and_predict,cycled_and_same],axis=1)
+            # axis=0 is vertical, axis=1 is horizontal
+            horse_and_predict = tf.concat( [tf.squeeze(base_image),tf.squeeze(prediction)], axis=1 )
+            cycled_and_same = tf.concat( [tf.squeeze(cycled),tf.squeeze(same)], axis=1 )
+            all_images = tf.concat( [horse_and_predict,cycled_and_same],axis=0)
             tf.keras.utils.save_img( folder + "/img{}a_{}.png".format(index,epoch_count), tf.squeeze( all_images ))
 
 ########################################################################################################################
 #       Runner Functionality
 
-    def run(self):
+    def run(self, base_loss=10.):
 
         plt.interactive(True)
 
@@ -244,11 +245,10 @@ class cyclegan_runner:
         BATCH_SIZE = 1
         # OUTPUT_CHANNELS = 3
 
-        LAMBDA = 10                  # 10
         self.GEN_LOSS_FACTOR = 1.0       # 1.0 = generator loss ?
         self.DISC_LOSS_FACTOR = 0.5      # 0.5 = discriminator
-        self.CYCLE_LOSS_FACTOR = LAMBDA * 1.0    # LAMBDA * 1.0 = full cycle
-        self.IDENT_LOSS_FACTOR = LAMBDA * 0.5    # LAMBDA * 0.5 = real to same
+        self.CYCLE_LOSS_FACTOR = base_loss * 1.0    # LAMBDA * 1.0 = full cycle
+        self.IDENT_LOSS_FACTOR = base_loss * 0.5    # LAMBDA * 0.5 = real to same
 
 
         self.train_first = self.train_first.cache().\
@@ -259,7 +259,7 @@ class cyclegan_runner:
             map(preprocess_image_train, num_parallel_calls=tf.data.AUTOTUNE).\
             shuffle(BUFFER_SIZE).batch(BATCH_SIZE)
 
-        # no shuffle, we want the same samples at the end every time
+        # no shuffle, we want the same samples at the front end every time
         self.test_first = self.test_first.\
             map(preprocess_image_test, num_parallel_calls=tf.data.AUTOTUNE).cache().batch(BATCH_SIZE)
         self.test_second = self.test_second.\
