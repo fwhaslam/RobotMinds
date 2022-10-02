@@ -1,9 +1,13 @@
 import tensorflow as tf
+
+# testing modules
 import unittest
+
+# module under test
 from support_for_testing import *
 
 
-class TestSum(unittest.TestCase):
+class test_support_for_testing(unittest.TestCase):
 
     def test__loss_has_gradient__true(self):
         def loss_with_subtraction(input_x, output_x):

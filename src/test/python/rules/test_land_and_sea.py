@@ -1,18 +1,22 @@
 import sys
 sys.path.append('..')
 sys.path.append('../../../main/python')
-sys.path.append('../../../main/python/rules')
 
-import support_for_testing as sft
-import land_and_sea_functions as lnz
-
-# import land_and_sea as lnz
 import tensorflow as tf
 import numpy as np
 
+# local modules
+import support_for_testing as sft
+from _utilities.tf_tensor_tools import *
+
+# testing modules
 import unittest
 import builtins
 import contextlib, io
+
+# module under test
+import rules.land_and_sea_functions as lnz
+
 
 class test_land_and_sea(unittest.TestCase):
 
@@ -39,54 +43,46 @@ class test_land_and_sea(unittest.TestCase):
 
     def test__round_vee(self):
         def check_value( val ):
-            # input = tf.constant( (val,) )
             input = tf.constant(val)
             result = lnz.round_vee( input )
-            return str(result)
-        # for ix in range( 0, 11 ):
-        #     vx = ix * 0.2
-        #     print('{} =>'.format(vx),lnz.round_peak(vx))
-        with self.subTest():
-            self.assertEqual( 'tf.Tensor(1.0, shape=(), dtype=float32)', check_value( -1.0) )
-        with self.subTest():
-            self.assertEqual( 'tf.Tensor(0.58778524, shape=(), dtype=float32)', check_value( -0.7) )
-        with self.subTest():
-            self.assertEqual( 'tf.Tensor(-0.58778524, shape=(), dtype=float32)', check_value( -0.3) )
-        with self.subTest():
-            self.assertEqual( 'tf.Tensor(-1.0, shape=(), dtype=float32)', check_value( 0.0) )
-        with self.subTest():
-            self.assertEqual( 'tf.Tensor(-0.58778524, shape=(), dtype=float32)', check_value( 0.3) )
-        with self.subTest():
-            self.assertEqual( 'tf.Tensor(0.58778554, shape=(), dtype=float32)', check_value( 0.7) )
-        with self.subTest():
-            self.assertEqual( 'tf.Tensor(1.0, shape=(), dtype=float32)', check_value( 1.0) )
+            return tensor_to_value(result)
+        with self.subTest('x=-1.0 => y=1.0'):
+            self.assertAlmostEqual( 1.0, check_value( -1.0), places=6 )
+        with self.subTest('x=-0.7 => y=0.588'):
+            self.assertAlmostEqual( 0.58778525, check_value( -0.7), places=6 )
+        with self.subTest('x=-0.3 => y=-5.88'):
+            self.assertAlmostEqual( -0.58778525, check_value( -0.3), places=6 )
+        with self.subTest('x=0.0 => y=-1.0'):
+            self.assertAlmostEqual( -1.0, check_value( 0.0), places=6 )
+        with self.subTest('x=0.3 => y=-0.588'):
+            self.assertAlmostEqual( -0.58778525, check_value( 0.3), places=6 )
+        with self.subTest('x=0.7 => y=0.588'):
+            self.assertAlmostEqual( 0.58778525, check_value( 0.7), places=6 )
+        with self.subTest('x=1.0 => y=1.0'):
+            self.assertAlmostEqual( 1.0, check_value( 1.0), places=6 )
 
     def test__round_vee__has_gradient(self):
         self.assertTrue( sft.loss_has_gradient( lnz.round_vee ) )
 
     def test__round_peak(self):
         def check_value( val ):
-            # input = tf.constant( (val,) )
             input = tf.constant(val)
             result = lnz.round_peak( input )
-            return str(result)
-        # for ix in range( 0, 11 ):
-        #     vx = ix * 0.2
-        #     print('{} =>'.format(vx),lnz.round_peak(vx))
-        with self.subTest():
-            self.assertEqual( 'tf.Tensor(-1.0, shape=(), dtype=float32)', check_value( -1.0) )
-        with self.subTest():
-            self.assertEqual( 'tf.Tensor(-0.58778524, shape=(), dtype=float32)', check_value( -0.7) )
-        with self.subTest():
-            self.assertEqual( 'tf.Tensor(0.58778524, shape=(), dtype=float32)', check_value( -0.3) )
-        with self.subTest():
-            self.assertEqual( 'tf.Tensor(1.0, shape=(), dtype=float32)', check_value( 0.0) )
-        with self.subTest():
-            self.assertEqual( 'tf.Tensor(0.58778524, shape=(), dtype=float32)', check_value( 0.3) )
-        with self.subTest():
-            self.assertEqual( 'tf.Tensor(-0.58778554, shape=(), dtype=float32)', check_value( 0.7) )
-        with self.subTest():
-            self.assertEqual( 'tf.Tensor(-1.0, shape=(), dtype=float32)', check_value( 1.0) )
+            return tensor_to_value(result)
+        with self.subTest('x=-1.0 => y=-1.0'):
+            self.assertAlmostEqual( -1.0, check_value( -1.0), places=6 )
+        with self.subTest('x=-0.7 => y=-0.588'):
+            self.assertAlmostEqual( -0.58778525, check_value( -0.7), places=6 )
+        with self.subTest('x=-0.3 => y=0.588'):
+            self.assertAlmostEqual( 0.58778525, check_value( -0.3), places=6 )
+        with self.subTest('x=0.0 => y=1.0'):
+            self.assertAlmostEqual( 1.0, check_value( 0.0), places=6 )
+        with self.subTest('x=0.3 => y=0.588'):
+            self.assertAlmostEqual( 0.58778525, check_value( 0.3), places=6 )
+        with self.subTest('x=0.7 => y=-0.588'):
+            self.assertAlmostEqual( -0.58778525, check_value( 0.7), places=6 )
+        with self.subTest('x=1.0 => y=-1.0'):
+            self.assertAlmostEqual( -1.0, check_value( 1.0) )
 
     def test__round_peak__has_gradient(self):
         self.assertTrue( sft.loss_has_gradient( lnz.round_peak ) )
@@ -111,8 +107,13 @@ class test_land_and_sea(unittest.TestCase):
         # tf.print("RESULT=",tf.get_static_value(result))
 
         # assertions
-        # self.assertTrue( np.array_equal( [0.01, 0.01, 0.01], tf.get_static_value(result) ) )
-        self.assertEqual( "tf.Tensor([0. 0. 0.], shape=(3,), dtype=float32)", str(result) )
+        self.assertEqual('(3,)',str(result.shape))
+        self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
+
+        value = tensor_to_value( result )
+        self.assertAlmostEqual( 0., result[0], places=6 )
+        self.assertAlmostEqual( 0., result[1], places=6 )
+        self.assertAlmostEqual( 0., result[2], places=6 )
 
     def test__terrain_loss__mostly_bad(self):
         # test terrain_loss
@@ -151,8 +152,13 @@ class test_land_and_sea(unittest.TestCase):
         # print("RESULT=",result)
 
         # assertions
-        # self.assertEqual( 0., tf.get_static_value( result ) )
-        self.assertEqual( "tf.Tensor([2. 2. 2.], shape=(3,), dtype=float32)", str(result) )
+        self.assertEqual('(3,)',str(result.shape))
+        self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
+
+        value = tensor_to_value( result )
+        self.assertAlmostEqual( 2., result[0], places=6 )
+        self.assertAlmostEqual( 2., result[1], places=6 )
+        self.assertAlmostEqual( 2., result[2], places=6 )
 
     def test__terrain_loss__has_gradient(self):
         self.assertTrue(sft.loss_has_gradient(lnz.terrain_loss, arg_count=2, output_shape=(2, 2, 2)))
@@ -349,7 +355,7 @@ class test_land_and_sea(unittest.TestCase):
 
         # assertions
         # self.assertEqual( 0., tf.get_static_value( result ) )
-        self.assertEqual( 'tf.Tensor([1. 1. 1.], shape=(3,), dtype=float32)', str(result) )
+        self.assertEqual( 'tf.Tensor([0.99999976 0.99999976 0.99999976], shape=(3,), dtype=float32)', str(result) )
 
     def test__terrain_surface_loss__max_surface(self):
 
@@ -384,8 +390,11 @@ class test_land_and_sea(unittest.TestCase):
         # print("RESULT=",result)
 
         # assertions
-        # self.assertEqual( 0., tf.get_static_value( result ) )
-        self.assertEqual( 'tf.Tensor([0.], shape=(1,), dtype=float32)', str(result) )
+        self.assertEqual('(1,)',str(result.shape))
+        self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
+
+        value = tensor_to_value( result )
+        self.assertAlmostEqual( 0, result[0], places=6 )
 
     def test__terrain_surface_loss__mixed(self):
 
@@ -403,7 +412,7 @@ class test_land_and_sea(unittest.TestCase):
 
         # assertions
         # self.assertEqual( 0., tf.get_static_value( result ) )
-        self.assertEqual( 'tf.Tensor([0.24129224], shape=(1,), dtype=float32)', str(result) )
+        self.assertEqual( 'tf.Tensor([0.241292], shape=(1,), dtype=float32)', str(result) )
 
     def test__terrain_surface_loss__has_gradient(self):
         self.assertTrue( sft.loss_has_gradient( lnz.terrain_surface_loss, output_shape=(2,2,2) ) )
