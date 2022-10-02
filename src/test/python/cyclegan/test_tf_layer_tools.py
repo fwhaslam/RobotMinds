@@ -15,15 +15,34 @@ import contextlib, io
 
 class test_land_and_sea(unittest.TestCase):
 
-    def test__resizing_layer__4dims_arrayed(self):
-        input = tf.constant( [[[[1,2,3],[4,5,6]],[[7,8,9],[10,11,12]]]] )
-        result = lato.resizing_layer(2)(input)
-        tf.print('result=',result)
-        self.assertEqual( """tf.Tensor(""",str(result))
-
     def test__ImageResize__4dims(self):
         input = tf.constant( [[[[1.0,1.1],[0.9,1.0]],[[2.0,2.1],[1.9,2.0]]]] )
         result = lato.ImageResize(2,2)(input)
+        tf.print('result=',result)
+        self.assertEqual( """tf.Tensor(
+[[[[1.  1.1]
+   [1.  1.1]
+   [0.9 1. ]
+   [0.9 1. ]]
+
+  [[1.  1.1]
+   [1.  1.1]
+   [0.9 1. ]
+   [0.9 1. ]]
+
+  [[2.  2.1]
+   [2.  2.1]
+   [1.9 2. ]
+   [1.9 2. ]]
+
+  [[2.  2.1]
+   [2.  2.1]
+   [1.9 2. ]
+   [1.9 2. ]]]], shape=(1, 4, 4, 2), dtype=float32)""", str(result) )
+
+    def test__resizing_layer__4dims_arrayed(self):
+        input = tf.constant( [[[[1,2,3],[4,5,6]],[[7,8,9],[10,11,12]]]] )
+        result = lato.resizing_layer(2)(input)
         tf.print('result=',result)
         self.assertEqual( """tf.Tensor(
 [[[[ 1  2  3]
@@ -44,9 +63,39 @@ class test_land_and_sea(unittest.TestCase):
   [[ 7  8  9]
    [ 7  8  9]
    [10 11 12]
-   [10 11 12]]]], shape=(1, 4, 4, 3), dtype=int32)""", str(result) )
+   [10 11 12]]]], shape=(1, 4, 4, 3), dtype=int32)""",str(result))
 
-    ########################################################################################################################
+
+    def test__SimpleImageCrop__4dims(self):
+        input = tf.constant( [[[[1,2,3],[1,2,3],[1,2,3],[1,2,3]],
+                               [[4,5,6],[4,5,6],[4,5,6],[4,5,6]],
+                               [[7,8,9],[7,8,9],[7,8,9],[7,8,9]],
+                               [[0,1,2],[0,1,2],[0,1,2],[0,1,2]]]] )
+        result = lato.SimpleImageCrop(1,1,2,2)(input)
+        tf.print('result=',result)
+        self.assertEqual( """tf.Tensor(
+[[[[4 5 6]
+   [4 5 6]]
+
+  [[7 8 9]
+   [7 8 9]]]], shape=(1, 2, 2, 3), dtype=int32)""", str(result) )
+
+    def test__crop_layer__4dims(self):
+        input = tf.constant( [[[[1,2,3],[1,2,3],[1,2,3],[1,2,3]],
+                               [[4,5,6],[4,5,6],[4,5,6],[4,5,6]],
+                               [[7,8,9],[7,8,9],[7,8,9],[7,8,9]],
+                               [[0,1,2],[0,1,2],[0,1,2],[0,1,2]]]] )
+        result = lato.crop_layer(1,1,2,2)(input)
+        tf.print('result=',result)
+        self.assertEqual( """tf.Tensor(
+[[[[4 5 6]
+   [4 5 6]]
+
+  [[7 8 9]
+   [7 8 9]]]], shape=(1, 2, 2, 3), dtype=int32)""", str(result) )
+
+
+########################################################################################################################
 
     def test__softargmax__1dim(self):
         input = tf.constant( [1.0,1.1,0.9] )
