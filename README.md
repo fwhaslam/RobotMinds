@@ -28,6 +28,9 @@ For the GPU rendering I needed to install:
 
 ## History ( latest first )
 
+2022/10/01 = Extracted layer tools, added 'softargmax()' algorithm.
+        Cyclegan framework saves image samples every 50 epochs, and restores from latest checkpoint.
+
 2022/09/26 = Added framework for cyclegans to simplify future development and testing
         Added first draft on 'rules-based' training.
 

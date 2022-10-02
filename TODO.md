@@ -10,6 +10,9 @@ Create quality evaluator for turn based puzzle games
 
 ## Next Tasks:
 
+add 'variance' measure, something that checks there is not too much self similarity
+    could simply use a zip algorithm ... hmm
+
 find memory enhanced neural network example from 
 https://analyticsindiamag.com/memory-enhanced-neural-networks-might-be-the-next-big-thing/
 

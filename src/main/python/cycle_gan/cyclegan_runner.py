@@ -28,6 +28,7 @@ import time
 import matplotlib.pyplot as plt
 from IPython.display import clear_output
 
+import re
 import os
 from os.path import *
 import configparser
@@ -36,6 +37,7 @@ from collections.abc import Callable
 
 from _utilities.tf_cyclegan_tools import *
 from tf_layer_tools import *
+
 
 class cyclegan_runner:
 
@@ -82,7 +84,7 @@ class cyclegan_runner:
 
 
     def discriminator(self):
-        """PatchGan discriminator model (https://arxiv.org/abs/1611.07004).
+        r"""PatchGan discriminator model (https://arxiv.org/abs/1611.07004).
         Args:
           norm_type: Type of normalization. Either 'batchnorm' or 'instancenorm'.
           target: Bool, indicating whether target image is an input or not.
@@ -140,8 +142,8 @@ class cyclegan_runner:
 
     @tf.function
     def train_step(self,real_x, real_y):
-        # persistent is set to True because the tape is used more than
-        # once to calculate the gradients.
+        r"""persistent is set to True because the tape is used more than
+        once to calculate the gradients."""
         with tf.GradientTape(persistent=True) as tape:
             # Generator G translates X -> Y
             # Generator F translates Y -> X.
@@ -201,11 +203,6 @@ class cyclegan_runner:
 
 ###########################################################################################################
 
-    def fix_folder( self, checkpoint_path ):
-        folder = checkpoint_path.replace("train","samples")
-        if not exists(folder): os.makedirs(folder)
-        return folder
-
     def store_config( self, folder, epoch_count ):
         config = configparser.RawConfigParser()
         config.add_section('cyclegan')
@@ -221,17 +218,46 @@ class cyclegan_runner:
     def store_samples( self, folder, image_array, gen_first, gen_second, epoch_count ):
         test_set = image_array.cache().take(10).repeat()
         for (index,base_image) in zip( range(10), test_set ):
-            # print("index=",index)
-            # print("SHAPE=",tf.shape(base_image))
             prediction = gen_first(base_image)
-            cycled = gen_first(prediction)
+            cycled = gen_second(prediction)
             same = gen_second(base_image)
 
             # axis=0 is vertical, axis=1 is horizontal
-            horse_and_predict = tf.concat( [tf.squeeze(base_image),tf.squeeze(prediction)], axis=1 )
+            base_and_predict = tf.concat( [tf.squeeze(base_image),tf.squeeze(prediction)], axis=1 )
             cycled_and_same = tf.concat( [tf.squeeze(cycled),tf.squeeze(same)], axis=1 )
-            all_images = tf.concat( [horse_and_predict,cycled_and_same],axis=0)
+            all_images = tf.concat( [base_and_predict,cycled_and_same],axis=0)
             tf.keras.utils.save_img( folder + "/img{}a_{}.png".format(index,epoch_count), tf.squeeze( all_images ))
+
+    def perform_all_saves( self, epoch_count, ckpt_manager, ckpt, delta_secs ):
+        r"""Store simple metrics, including current epoch
+        convert and store first 10 training images ( original, altered, cycled, same )"""
+
+        ckpt_save_path = ckpt_manager.save()
+        print ('Saving checkpoint for epoch {} at {}'.format(epoch_count, ckpt_save_path))
+        print ('Time taken for epoch {} is {} sec\n'.format(epoch_count,delta_secs))
+        if ((epoch_count%50)!=0):
+            return
+
+        # periodic checkpoint save, image samples
+        folder = self.checkpoint_root + '/e{}'.format( epoch_count )
+        ckpt.write( folder+'/ckpt-{}'.format( epoch_count) ) # %50 backup of checkpoint
+
+        samples_folder = folder + '/samples'
+        if not exists(samples_folder): os.makedirs(samples_folder)
+        self.store_config( samples_folder, epoch_count )
+        self.store_samples( samples_folder, self.test_first, self.generator_f, self.generator_f, epoch_count )
+
+
+    def load_with_epoch( self, ckpt, ckpt_manager ):
+        r"""if a checkpoint exists, restore the latest checkpoint."""
+        checkpoint_name = ckpt_manager.latest_checkpoint
+        if checkpoint_name:
+            tf.print("\n\nLATEST_CHECKPOINT =",checkpoint_name)
+            ckpt.restore(ckpt_manager.latest_checkpoint)
+            print ('Latest checkpoint restored!!')
+            return int( re.findall(r'\d+', checkpoint_name)[0] )
+        else:
+            return 0
 
 ########################################################################################################################
 #       Runner Functionality
@@ -269,7 +295,7 @@ class cyclegan_runner:
         # select images for demonstrating progress :: Display alongside generator images
         sample_first = next(iter(self.train_first))
         sample_second = next(iter(self.train_second))
-        horse_loop = iter(RepeatLoop(self.train_first))
+        first_loop = iter(RepeatLoop(self.train_first))
 
 ########################################################################################################################
 
@@ -283,7 +309,6 @@ class cyclegan_runner:
         self.discriminator_x_optimizer = tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
         self.discriminator_y_optimizer = tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
 
-
 ########################################################################################################################
 # Checkpoints
 
@@ -296,19 +321,21 @@ class cyclegan_runner:
                                    discriminator_x_optimizer=self.discriminator_x_optimizer,
                                    discriminator_y_optimizer=self.discriminator_y_optimizer)
 
-        self.checkpoint_path = self.checkpoint_root +'/e50/train'
-        ckpt_manager = tf.train.CheckpointManager(ckpt, self.checkpoint_path, max_to_keep=5)
+        ckpt_manager = tf.train.CheckpointManager(
+            ckpt,
+            self.checkpoint_root +'/train',
+            max_to_keep=10 )
 
         # if a checkpoint exists, restore the latest checkpoint.
-        if ckpt_manager.latest_checkpoint:
-            ckpt.restore(ckpt_manager.latest_checkpoint)
-            print ('Latest checkpoint restored!!')
+        epoch_count = self.load_with_epoch( ckpt, ckpt_manager )
 
 ########################################################################################################################
 # MAIN LOOP
 
-        epoch_count = 0
-        for epoch in range(self.EPOCHS):
+        for epoch_step in range(self.EPOCHS):
+            epoch_count += 1
+            print('\nStarting Epoch =',epoch_count)
+
             start = time.time()
 
             n = 0
@@ -317,29 +344,12 @@ class cyclegan_runner:
                 if n % 10 == 0:
                     print ('.', end='')
                 n += 1
-
             clear_output(wait=True)
             # Using a consistent image (sample_first) so that the progress of the model
             # is clearly visible.
-            next_sample = next( horse_loop )
+            next_sample = next( first_loop )
             generate_images(self.generator_g, self.generator_f, next_sample)
 
-            epoch_count += 1
-            if epoch_count % 5 == 0:
-                ckpt_save_path = ckpt_manager.save()
-                print ('Saving checkpoint for epoch {} at {}'.format(epoch_count,
-                                                                     ckpt_save_path))
+            self.perform_all_saves( epoch_count, ckpt_manager, ckpt, time.time()-start )
 
-            print ('Time taken for epoch {} is {} sec\n'.format(epoch_count,
-                                                                time.time()-start))
-
-
-###########################################################################################################
-#   Closing:
-#       Store simple metrics, including current epoch
-#       convert and store first 10 training images ( original, altered, cycled, same )
-#
-
-        samples_folder = self.fix_folder( self.checkpoint_path )
-        self.store_config( samples_folder, epoch_count )
-        self.store_samples( samples_folder, self.test_first, self.generator_f, self.generator_f, epoch_count )
+        print('\n\nEND OF PROCESS epoch_count =',epoch_count,'\n\n')
