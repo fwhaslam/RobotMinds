@@ -21,7 +21,6 @@ import sys
 sys.path.append('..')
 
 import tensorflow as tf
-
 import tensorflow_datasets as tfds
 
 import time
@@ -49,10 +48,11 @@ class cyclegan_runner:
         self.train_second = train_second
         self.test_first = test_first
         self.test_second = test_second
-        self.EPOCHS = epochs
         self.checkpoint_root = checkpoint_root
         self.generator_g = generator_first
         self.generator_f = generator_second
+        self.EPOCHS = epochs
+        if len(sys.argv)>2: self.EPOCHS = int( sys.argv[2] )
 
 ########################################################################################################################
 #   Functional Api version of UNet generator from tensorflow_examples.models.pix2pix
@@ -255,9 +255,19 @@ class cyclegan_runner:
             tf.print("\n\nLATEST_CHECKPOINT =",checkpoint_name)
             ckpt.restore(ckpt_manager.latest_checkpoint)
             print ('Latest checkpoint restored!!')
-            return int( re.findall(r'\d+', checkpoint_name)[0] )
+            return int( re.findall(r'\d+', str.split(checkpoint_name,'/')[-1] )[0] )
         else:
             return 0
+
+    def display_config(self):
+        print('\n\n')
+        print('config: checkpoint_root =',self.checkpoint_root)
+        print('config: EPOCHS=',self.EPOCHS)
+        print('config: GEN_LOSS_FACTOR=',self.GEN_LOSS_FACTOR)
+        print('config: DISC_LOSS_FACTOR=',self.DISC_LOSS_FACTOR)
+        print('config: CYCLE_LOSS_FACTOR=',self.CYCLE_LOSS_FACTOR)
+        print('config: IDENT_LOSS_FACTOR=',self.IDENT_LOSS_FACTOR)
+        print('\n\n')
 
 ########################################################################################################################
 #       Runner Functionality
@@ -276,6 +286,7 @@ class cyclegan_runner:
         self.CYCLE_LOSS_FACTOR = base_loss * 1.0    # LAMBDA * 1.0 = full cycle
         self.IDENT_LOSS_FACTOR = base_loss * 0.5    # LAMBDA * 0.5 = real to same
 
+        self.display_config()
 
         self.train_first = self.train_first.cache().\
             map(preprocess_image_train, num_parallel_calls=tf.data.AUTOTUNE).\
@@ -293,8 +304,8 @@ class cyclegan_runner:
 
 
         # select images for demonstrating progress :: Display alongside generator images
-        sample_first = next(iter(self.train_first))
-        sample_second = next(iter(self.train_second))
+        # sample_first = next(iter(self.train_first))
+        # sample_second = next(iter(self.train_second))
         first_loop = iter(RepeatLoop(self.train_first))
 
 ########################################################################################################################
@@ -327,14 +338,15 @@ class cyclegan_runner:
             max_to_keep=10 )
 
         # if a checkpoint exists, restore the latest checkpoint.
-        epoch_count = self.load_with_epoch( ckpt, ckpt_manager )
+        latest_epoch = self.load_with_epoch( ckpt, ckpt_manager )
+        print('latest_epoch=',latest_epoch)
 
 ########################################################################################################################
 # MAIN LOOP
 
         for epoch_step in range(self.EPOCHS):
-            epoch_count += 1
-            print('\nStarting Epoch =',epoch_count)
+            latest_epoch += 1
+            print('\nStarting Epoch =',latest_epoch)
 
             start = time.time()
 
@@ -350,6 +362,6 @@ class cyclegan_runner:
             next_sample = next( first_loop )
             generate_images(self.generator_g, self.generator_f, next_sample)
 
-            self.perform_all_saves( epoch_count, ckpt_manager, ckpt, time.time()-start )
+            self.perform_all_saves( latest_epoch, ckpt_manager, ckpt, time.time()-start )
 
-        print('\n\nEND OF PROCESS epoch_count =',epoch_count,'\n\n')
+        print('\n\nEND OF PROCESS latest_epoch =',latest_epoch,'\n\n')
