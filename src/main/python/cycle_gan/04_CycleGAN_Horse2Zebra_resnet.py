@@ -134,49 +134,9 @@ def upsample(filters, size, strides=2):
     result.add(tf.keras.layers.ReLU())
     return result
 
-class MyAreaResize(tf.keras.layers.Layer):
-
-    def __init__(self, wide, tall):
-        super(MyAreaResize, self).__init__()
-        self.wide = wide
-        self.tall = tall
-
-    def build(self,other):
-        # tf.print("MAR.OTHER=",other)
-        return
-
-    def call(self, inputs):
-        work = tf.repeat( inputs, repeats=self.wide, axis=1 )
-        return tf.repeat( work, repeats=self.tall, axis=2 )
-
-def resizing_layer( size ):
-    return MyAreaResize( size, size )
-    # return tf.keras.layers.Resizing( size, size, interpolation='nearest' )
-    # return tf.keras.layers.Resizing( 8,8, interpolation='area' )
-    # return tf.keras.layers.UpSampling2D( size=4, interpolation='area' )
-
 def merge_layer( x, y ):
     return tf.keras.layers.Concatenate()( [x, y] )
     # return tf.keras.layers.Add()( [x, y] )
-
-class MyCropSize(tf.keras.layers.Layer):
-
-    def __init__(self, y, x, tall, wide):
-        super(MyCropSize, self).__init__()
-        self.y = y
-        self.x = x
-        self.tall = tall
-        self.wide = wide
-
-    def build(self,other):
-        return
-
-    def call(self, inputs):
-        return tf.image.crop_to_bounding_box( inputs, self.y, self.x, self.tall, self.wide )
-
-
-def crop_layer( y, x, tall, wide ):
-    return MyCropSize( y, x, tall, wide )
 
 
 def resnet_generator( output_channels ):
