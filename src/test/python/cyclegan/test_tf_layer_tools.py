@@ -1,19 +1,23 @@
 import sys
 sys.path.append('..')
 sys.path.append('../../../main/python')
-sys.path.append('../../../main/python/rules')
-
-import support_for_testing as sft
-import cycle_gan.tf_layer_tools as lato
 
 import tensorflow as tf
 import numpy as np
 
+# local modules
+import support_for_testing as sft
+
+# testing modules
 import unittest
 import builtins
 import contextlib, io
 
-class test_land_and_sea(unittest.TestCase):
+# module under test
+import cycle_gan.tf_layer_tools as lato
+
+
+class test_tf_layer_tools(unittest.TestCase):
 
     def test__ImageResize__4dims(self):
         input = tf.constant( [[[[1.0,1.1],[0.9,1.0]],[[2.0,2.1],[1.9,2.0]]]] )
