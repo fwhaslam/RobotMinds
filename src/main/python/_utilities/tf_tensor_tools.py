@@ -9,6 +9,19 @@ def tensor_to_value( some_tensor:tf.Tensor ):
     if tf.executing_eagerly(): return some_tensor.numpy()
     return some_tensor.eval()
 
+@tf.function
+def supersoftmax( alpha:tf.Tensor, beta=64. ):
+    r"""Supersoftmax implementation, applied to last dimension of tensor.
+    Produces results similar to softmax, but more closely approaches zero or one.
+
+    :param alpha: a tensor matrix containing values we want to reduce
+    :param beta: exponentiation factor which causes softmax to produce values closer to zero or one.
+    :return: matrix which transforms the last dimension of alpha to a supersoftmax value."""
+
+    betalpha = beta * alpha
+    # tf.print('betalpha=',betalpha)
+    # extreme exponentiation creates numbers close to zero or one ( ~one for biggest entry)
+    return tf.nn.softmax( betalpha )
 
 @tf.function
 def softargmax( alpha:tf.Tensor, beta=64. ):
