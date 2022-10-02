@@ -43,7 +43,6 @@ import tensorflow as tf
 from tensorflow import image, keras
 
 from land_and_sea_functions import *
-from _utilities.tf_tensor_tools import *
 from cycle_gan.tf_layer_tools import *
 
 # tf.compat.v1.enable_eager_execution()
@@ -63,12 +62,10 @@ plt.ion()
 # print("len(labels) = ", len(test_labels) )
 
 IMAGE_CHANNELS = 3
-WIDE = TALL = 32
-
+WIDE = TALL = 16
 INPUT_SHAPE = (WIDE, TALL, IMAGE_CHANNELS)
-MAP_SHAPE =  (WIDE, TALL, TERRAIN_TYPE_COUNT)
+MAP_SHAPE =  (WIDE*2, TALL*2, TERRAIN_TYPE_COUNT)
 IMAGE_RESIZE = list(INPUT_SHAPE[:2])     #  [wide,tall]
-
 EPOCHS = 10
 SKIP = 1       # only process one out of SKIP from available images :: 1 = keep all
 
@@ -228,74 +225,29 @@ def trim_layer_selu(filters,size,strides=1):
 def grow_layer_selu(filters,size,strides=1):
     return tf.keras.layers.Conv2DTranspose(filters, size, strides=strides, padding='same',activation='selu')
 
-
-def create_model_v3( shape ):
-
-    x = inputs = keras.Input(shape=shape)
-    # tf.print('x0=',x.shape)
-    skip1 = x = trim_layer(128,4,4)(x)                   # ( bs, 8,8, 128 )
-    # tf.print('x1=',x.shape)
-    x = trim_layer(512,2,2)(x)                          # ( bs, 4,4, 512 )
-
-    x = grow_layer(512,2,2)(x)                          # ( bs, 8,8, 512 )
-    x = tf.keras.layers.Concatenate()( [x, skip1] )     # ( bs, 8,8, 512+128 )
-
-    x = grow_layer(128,4,4)(x)                           # ( bs, 32,32, 128 )
-
-    # x = tf.keras.layers.Conv2DTranspose( TERRAIN_TYPE_COUNT, 1, activation='tanh')(x)   # (bs, 32,32, 2) # tanh for image
-    x = tf.keras.layers.Conv2DTranspose( TERRAIN_TYPE_COUNT, 1, activation='softmax')(x)   # (bs, 32,32, 2) # softmax for map
-    outputs = x
-
-    model = tf.keras.Model(inputs=inputs, outputs=outputs)
-    model.compile( optimizer=tf.keras.optimizers.Adam(0.001),
-                   loss=terrain_loss,
-                   metrics=['accuracy'] )
-    return model
-
-def create_model_v2( shape ):
+def create_model_v4( shape ):
+    r"""two outputs, one validates image reconstruction"""
 
     x = inputs = keras.Input(shape=shape)
     # tf.print('x0=',x.shape)
-    x = trim_layer_selu(64,2,2)(x)       # ( bs, 16,16, 64 )
-    # tf.print('x1=',x.shape)
-    x = trim_layer_selu(192,2,2)(x)       # ( bs, 8,8, 192 )
-    x = trim_layer_selu(512,2,2)(x)       # ( bs, 4,4, 512 )
-    # tf.print('x2=',x.shape)
+    x = trim_layer_selu(64,2)(x)                 # ( bs, 16,16, 64 )
+    x = trim_layer_selu(128,2)(x)                         # ( bs, 16,16, 64 )
 
-    x = grow_layer_selu(512,2,2)(x)       # ( bs, 8,8, 512 )
-    x = grow_layer_selu(192,2,2)(x)       # ( bs, 16,16, 192 )
-    x = grow_layer_selu(64,2,2)(x)       # ( bs, 32,32, 64 )
+    x = grow_layer_selu(128,2,2)(x)                         # ( bs, 32,32, 64 )
+    x = grow_layer_selu(128,2,1)(x)                          # ( bs, 32,32, 128 )
 
-    # x = tf.keras.layers.Conv2DTranspose( TERRAIN_TYPE_COUNT, 1, activation='tanh')(x)   # (bs, 32,32, 2) # tanh for image
-    x = tf.keras.layers.Conv2DTranspose( TERRAIN_TYPE_COUNT, 1, activation='softmax')(x)   # (bs, 32,32, 2) # softmax for map
-    outputs = x
+    output1 = tf.keras.layers.Conv2DTranspose( TERRAIN_TYPE_COUNT, 1, activation='softmax')(x)  # (bs, 32,32, 2) # softmax for map
+    tf.print('output1=',output1.shape)
+    output2 = tf.keras.layers.Conv2D( IMAGE_CHANNELS, 2,2, activation='tanh')(x)                # (bs, 16,16, 3) # tanh for image
+    tf.print('output2=',output2.shape)
 
-    model = tf.keras.Model(inputs=inputs, outputs=outputs)
+    model = tf.keras.Model(inputs=inputs, outputs=[output1,output2] )
     model.compile( optimizer=tf.keras.optimizers.Adam(0.001),
-                   loss=terrain_loss,
+                   loss=[ terrain_loss, tf.keras.losses.MeanSquaredError() ],
                    metrics=['accuracy'] )
     return model
 
-def create_model_v1( shape ):
-
-    units = TERRAIN_TYPE_COUNT * WIDE * TALL
-    x = inputs = keras.Input(shape=shape)
-    x = keras.layers.Flatten()(x)
-    x = keras.layers.Dense(units,activation='LeakyReLU')(x)
-    x = keras.layers.Dense(units,activation='LeakyReLU')(x)
-    # x = keras.layers.Dense(2048,activation='LeakyReLU')(x)
-    x = keras.layers.Reshape( (WIDE,TALL,TERRAIN_TYPE_COUNT) )(x)
-    x = keras.layers.Activation( 'softmax' )(x)
-    outputs = x
-
-    model = tf.keras.Model(inputs=inputs, outputs=outputs)
-    model.compile( optimizer=tf.keras.optimizers.Adam(0.001),
-                   loss=terrain_loss,
-                   metrics=['accuracy'] )
-    return model
-
-
-model = create_model_v1(INPUT_SHAPE)
+model = create_model_v4(INPUT_SHAPE)
 
 model.summary()
 
@@ -316,9 +268,15 @@ model.summary()
 # print( "Variables.Module=",tf.Module.trainable_variables )
 # print( "Variables.model=",model.trainable_variables )
 
+doubler = ImageResize(2,2)
 
-train_image_set = train_images
-test_image_set = test_images
+bigger_train_images = doubler( train_images )
+train_image_set = [bigger_train_images,train_images]
+tf.print('bigger_train_images=',bigger_train_images.shape)
+
+bigger_test_images = doubler( test_images )
+test_image_set = [bigger_test_images,test_images]
+tf.print('bigger_test_images=',bigger_test_images.shape)
 
 model.fit( x=train_images, y=train_image_set,
            epochs=EPOCHS,
@@ -415,6 +373,10 @@ def draw_image_and_values(work):
     plt.show()
     plt.pause( 500 )
 
+def as_numpy_array( some_tensor ):
+    if (tf.executing_eagerly()): return some_tensor.numpy()
+    return some_tensor.eval()
+
 def display_absolute_terrain_counts( work ):
     # print("Work=",work)
 
@@ -423,7 +385,7 @@ def display_absolute_terrain_counts( work ):
     print('surface_loss=', terrain_surface_loss( work ) )
 
     # transform into final map
-    work = tensor_to_value( tf.argmax( tf.round( work ), axis=-1 ) )
+    work = as_numpy_array( tf.argmax( tf.round( work ), axis=-1 ) )
     print("final work=",work)
 
     # count terrain types
@@ -457,8 +419,7 @@ def display_absolute_terrain_counts( work ):
 # pick and display one solution
 image = test_images[0:1]
 result = model( image )
-# [work,pic] = result
-work = result
+[work,pic] = result
 
 # tf.print('work.shape=',work.shape)
 # tf.print('pic.shape=',pic.shape)
