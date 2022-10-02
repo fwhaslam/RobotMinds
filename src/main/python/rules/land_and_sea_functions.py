@@ -7,10 +7,8 @@ import math
 
 # number of possible output values, one value for each terrain type
 TERRAIN_TYPE_COUNT = 2
-TERRAIN_LOSS_OFFSET = tf.constant( tf.range(0, TERRAIN_TYPE_COUNT) )
-# tf.print("offset=",TERRAIN_LOSS_OFFSET)
-
-SURFACE_GOAL = 0.5
+TERRAIN_TYPE_GOAL = tf.constant( [0.5,0.5] )
+TERRAIN_SURFACE_GOAL = 0.5
 
 PI = math.pi
 HALF = 0.5
