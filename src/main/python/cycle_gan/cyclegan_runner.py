@@ -49,10 +49,10 @@ class cyclegan_runner:
         self.test_first = test_first
         self.test_second = test_second
         self.checkpoint_root = checkpoint_root
-        self.generator_g = generator_first
-        self.generator_f = generator_second
+        self.generator_first = generator_first
+        self.generator_second = generator_second
         self.EPOCHS = epochs
-        if len(sys.argv)>2: self.EPOCHS = int( sys.argv[2] )
+        if len(sys.argv)>=2: self.EPOCHS = int( sys.argv[1] )
 
 ########################################################################################################################
 #   Functional Api version of UNet generator from tensorflow_examples.models.pix2pix
@@ -148,15 +148,15 @@ class cyclegan_runner:
             # Generator G translates X -> Y
             # Generator F translates Y -> X.
 
-            fake_y = self.generator_g(real_x, training=True)
-            cycled_x = self.generator_f(fake_y, training=True)
+            fake_y = self.generator_first(real_x, training=True)
+            cycled_x = self.generator_second(fake_y, training=True)
 
-            fake_x = self.generator_f(real_y, training=True)
-            cycled_y = self.generator_g(fake_x, training=True)
+            fake_x = self.generator_second(real_y, training=True)
+            cycled_y = self.generator_first(fake_x, training=True)
 
             # same_x and same_y are used for identity loss.
-            same_x = self.generator_f(real_x, training=True)
-            same_y = self.generator_g(real_y, training=True)
+            same_x = self.generator_second(real_x, training=True)
+            same_y = self.generator_first(real_y, training=True)
 
             disc_real_x = self.discriminator_x(real_x, training=True)
             disc_real_y = self.discriminator_y(real_y, training=True)
@@ -179,9 +179,9 @@ class cyclegan_runner:
 
         # Calculate the gradients for generator and discriminator
         generator_g_gradients = tape.gradient(total_gen_g_loss,
-                                              self.generator_g.trainable_variables)
+                                              self.generator_first.trainable_variables)
         generator_f_gradients = tape.gradient(total_gen_f_loss,
-                                              self.generator_f.trainable_variables)
+                                              self.generator_second.trainable_variables)
 
         discriminator_x_gradients = tape.gradient(disc_x_loss,
                                                   self.discriminator_x.trainable_variables)
@@ -190,10 +190,10 @@ class cyclegan_runner:
 
         # Apply the gradients to the optimizer
         self.generator_g_optimizer.apply_gradients(zip(generator_g_gradients,
-                                                       self.generator_g.trainable_variables))
+                                                       self.generator_first.trainable_variables))
 
         self.generator_f_optimizer.apply_gradients(zip(generator_f_gradients,
-                                                       self.generator_f.trainable_variables))
+                                                       self.generator_second.trainable_variables))
 
         self.discriminator_x_optimizer.apply_gradients(zip(discriminator_x_gradients,
                                                            self.discriminator_x.trainable_variables))
@@ -245,7 +245,7 @@ class cyclegan_runner:
         samples_folder = folder + '/samples'
         if not exists(samples_folder): os.makedirs(samples_folder)
         self.store_config( samples_folder, epoch_count )
-        self.store_samples( samples_folder, self.test_first, self.generator_f, self.generator_f, epoch_count )
+        self.store_samples(samples_folder, self.test_first, self.generator_first, self.generator_second, epoch_count)
 
 
     def load_with_epoch( self, ckpt, ckpt_manager ):
@@ -323,8 +323,8 @@ class cyclegan_runner:
 ########################################################################################################################
 # Checkpoints
 
-        ckpt = tf.train.Checkpoint(generator_g=self.generator_g,
-                                   generator_f=self.generator_f,
+        ckpt = tf.train.Checkpoint(generator_g=self.generator_first,
+                                   generator_f=self.generator_second,
                                    discriminator_x=self.discriminator_x,
                                    discriminator_y=self.discriminator_y,
                                    generator_g_optimizer=self.generator_g_optimizer,
@@ -360,7 +360,7 @@ class cyclegan_runner:
             # Using a consistent image (sample_first) so that the progress of the model
             # is clearly visible.
             next_sample = next( first_loop )
-            generate_images(self.generator_g, self.generator_f, next_sample)
+            generate_images(self.generator_first, self.generator_second, next_sample)
 
             self.perform_all_saves( latest_epoch, ckpt_manager, ckpt, time.time()-start )
 
