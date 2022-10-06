@@ -9,6 +9,7 @@
 #       removed ipython syntax
 #
 #   Code tested with:
+#       Tensorflow 2.10.0 / Cuda 11.7 / CudaNN 8.4 / VC_Redist 2019+
 #
 
 # pip install "tensorflow-text==2.8.*"
@@ -1210,8 +1211,8 @@ _ = plt.suptitle('This never works')
 # /tmpfs/tmp/ipykernel_44101/143215515.py:15: UserWarning: FixedFormatter should only be used together with FixedLocator
 #     ax.set_yticklabels([''] + predicted_sentence, fontdict=fontdict)
 
-
-tf.saved_model.save(translator, 'translator',
+CHECKPOINT_NAME = 'translator_with_attention_ckpt'
+tf.saved_model.save(translator, CHECKPOINT_NAME,
                     signatures={'serving_default': translator.tf_translate})
 
 # 2022-08-04 12:31:40.935911: W tensorflow/python/util/util.cc:368] Sets are not currently considered sequences, but this may change in the future, so consider avoiding using them.
@@ -1219,7 +1220,7 @@ tf.saved_model.save(translator, 'translator',
 # INFO:tensorflow:Assets written to: translator/assets
 # INFO:tensorflow:Assets written to: translator/assets
 
-reloaded = tf.saved_model.load('translator')
+reloaded = tf.saved_model.load(CHECKPOINT_NAME)
 result = reloaded.tf_translate(three_input_text)
 
 # %%time
