@@ -233,29 +233,6 @@ def create_model_v3( shape ):
 
     x = inputs = keras.Input(shape=shape)
     # tf.print('x0=',x.shape)
-    skip1 = x = trim_layer(128,4,4)(x)                   # ( bs, 8,8, 128 )
-    # tf.print('x1=',x.shape)
-    x = trim_layer(512,2,2)(x)                          # ( bs, 4,4, 512 )
-
-    x = grow_layer(512,2,2)(x)                          # ( bs, 8,8, 512 )
-    x = tf.keras.layers.Concatenate()( [x, skip1] )     # ( bs, 8,8, 512+128 )
-
-    x = grow_layer(128,4,4)(x)                           # ( bs, 32,32, 128 )
-
-    # x = tf.keras.layers.Conv2DTranspose( TERRAIN_TYPE_COUNT, 1, activation='tanh')(x)   # (bs, 32,32, 2) # tanh for image
-    x = tf.keras.layers.Conv2DTranspose( TERRAIN_TYPE_COUNT, 1, activation='softmax')(x)   # (bs, 32,32, 2) # softmax for map
-    outputs = x
-
-    model = tf.keras.Model(inputs=inputs, outputs=outputs)
-    model.compile( optimizer=tf.keras.optimizers.Adam(0.001),
-                   loss=terrain_loss,
-                   metrics=['accuracy'] )
-    return model
-
-def create_model_v2( shape ):
-
-    x = inputs = keras.Input(shape=shape)
-    # tf.print('x0=',x.shape)
     x = trim_layer_selu(64,2,2)(x)       # ( bs, 16,16, 64 )
     # tf.print('x1=',x.shape)
     x = trim_layer_selu(192,2,2)(x)       # ( bs, 8,8, 192 )
@@ -270,7 +247,22 @@ def create_model_v2( shape ):
     x = tf.keras.layers.Conv2DTranspose( TERRAIN_TYPE_COUNT, 1, activation='softmax')(x)   # (bs, 32,32, 2) # softmax for map
     outputs = x
 
-    model = tf.keras.Model(inputs=inputs, outputs=outputs)
+    model = tf.keras.Model(inputs=inputs, outputs=outputs,name='model_v3')
+    model.compile( optimizer=tf.keras.optimizers.Adam(0.001),
+                   loss=terrain_loss,
+                   metrics=['accuracy'] )
+    return model
+
+def create_model_v2( shape ):
+
+    x = inputs = keras.Input(shape=shape)
+    x = trim_layer_selu(128,4)(x)
+    x = trim_layer_selu(128,4)(x)
+    x = trim_layer_selu(128,4)(x)
+    x = tf.keras.layers.Conv2D( TERRAIN_TYPE_COUNT, 1, strides=1, padding='same',activation='softmax')(x)
+    outputs = x
+
+    model = tf.keras.Model(inputs=inputs, outputs=outputs,name='model_v2')
     model.compile( optimizer=tf.keras.optimizers.Adam(0.001),
                    loss=terrain_loss,
                    metrics=['accuracy'] )
@@ -288,7 +280,7 @@ def create_model_v1( shape ):
     x = keras.layers.Activation( 'softmax' )(x)
     outputs = x
 
-    model = tf.keras.Model(inputs=inputs, outputs=outputs)
+    model = tf.keras.Model(inputs=inputs, outputs=outputs,name='model_v1')
     model.compile( optimizer=tf.keras.optimizers.Adam(0.001),
                    loss=terrain_loss,
                    metrics=['accuracy'] )

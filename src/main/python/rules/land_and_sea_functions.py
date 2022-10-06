@@ -1,8 +1,12 @@
 #
 #   functions for use in land_and_sea, isolated for testing
+import sys
+sys.path.append('..')
 
 import tensorflow as tf
 import math
+
+import _utilities.tf_tensor_tools as teto
 
 
 # number of possible output values, one value for each terrain type
@@ -51,11 +55,11 @@ def terrain_loss( y_true, y_pred ):
     Loss is also based on certainty, which is defined as being close to 0 or 1, not 0.5
     """
 
-    type_of_terrain_loss = terrain_type_loss( y_pred )
+    sm_y_pred = teto.supersoftmax( y_pred )
 
-    certainty_loss = terrain_certainty_loss( y_pred )
-
-    surface_loss = terrain_surface_loss( y_pred )
+    type_of_terrain_loss = terrain_type_loss( sm_y_pred )
+    certainty_loss = 0  # terrain_certainty_loss( y_pred )
+    surface_loss = terrain_surface_loss( sm_y_pred )
 
     return type_of_terrain_loss + certainty_loss + surface_loss
 
