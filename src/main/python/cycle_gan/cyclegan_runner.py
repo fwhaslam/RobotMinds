@@ -262,11 +262,11 @@ class cyclegan_runner:
     def display_config(self):
         print('\n\n')
         print('config: checkpoint_root =',self.checkpoint_root)
-        print('config: EPOCHS=',self.EPOCHS)
-        print('config: GEN_LOSS_FACTOR=',self.GEN_LOSS_FACTOR)
-        print('config: DISC_LOSS_FACTOR=',self.DISC_LOSS_FACTOR)
-        print('config: CYCLE_LOSS_FACTOR=',self.CYCLE_LOSS_FACTOR)
-        print('config: IDENT_LOSS_FACTOR=',self.IDENT_LOSS_FACTOR)
+        print('config: EPOCHS =',self.EPOCHS)
+        print('config: GEN_LOSS_FACTOR =',self.GEN_LOSS_FACTOR)
+        print('config: DISC_LOSS_FACTOR =',self.DISC_LOSS_FACTOR)
+        print('config: CYCLE_LOSS_FACTOR =',self.CYCLE_LOSS_FACTOR)
+        print('config: IDENT_LOSS_FACTOR =',self.IDENT_LOSS_FACTOR)
         print('\n\n')
 
 ########################################################################################################################
