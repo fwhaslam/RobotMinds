@@ -133,7 +133,7 @@ class test_land_and_sea(unittest.TestCase):
 
         # assertions
         # self.assertTrue( np.array_equal( [0,0,0], tf.get_static_value(result) ) )
-        self.assertEqual( "tf.Tensor([2. 2. 2.], shape=(3,), dtype=float32)", str(result) )
+        self.assertEqual( "tf.Tensor([1.9 1.9 1.9], shape=(3,), dtype=float32)", str(result) )
 
     def test__terrain_loss__types_failure(self):
         # test terrain_loss
@@ -156,9 +156,9 @@ class test_land_and_sea(unittest.TestCase):
         self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
 
         value = tensor_to_value( result )
-        self.assertAlmostEqual( 2., result[0], places=6 )
-        self.assertAlmostEqual( 2., result[1], places=6 )
-        self.assertAlmostEqual( 2., result[2], places=6 )
+        self.assertAlmostEqual( 1.5, result[0], places=6 )
+        self.assertAlmostEqual( 1.5, result[1], places=6 )
+        self.assertAlmostEqual( 1.5, result[2], places=6 )
 
     def test__terrain_loss__has_gradient(self):
         self.assertTrue(sft.loss_has_gradient(lnz.terrain_loss, arg_count=2, output_shape=(2, 2, 2)))
@@ -201,7 +201,7 @@ class test_land_and_sea(unittest.TestCase):
 
         # assertions
         # self.assertEqual( 0., tf.get_static_value( result ) )
-        self.assertEqual( "tf.Tensor([1. 1.], shape=(2,), dtype=float32)", str(result) )
+        self.assertEqual( "tf.Tensor([0.5 0.5], shape=(2,), dtype=float32)", str(result) )
 
     def test__terrain_type_loss__half_off_target(self):
 
@@ -220,7 +220,8 @@ class test_land_and_sea(unittest.TestCase):
 
         # assertions
         # self.assertEqual( 0., tf.get_static_value( result ) )
-        self.assertEqual( "tf.Tensor([0.5 0.5], shape=(2,), dtype=float32)", str(result) )
+        self.assertEqual( "tf.Tensor([0.25 0.25], shape=(2,), dtype=float32)", str(result) )
+
 
     def test__terrain_type_loss__mixed(self):
 
@@ -242,8 +243,12 @@ class test_land_and_sea(unittest.TestCase):
         # print("RESULT=",result)
 
         # assertions
-        # self.assertEqual( 0., tf.get_static_value( result ) )
-        self.assertEqual( "tf.Tensor([0.   0.45], shape=(2,), dtype=float32)", str(result) )
+        self.assertEqual('(2,)',str(result.shape))
+        self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
+
+        value = tensor_to_value( result )
+        self.assertAlmostEqual( 0., result[0], places=6 )
+        self.assertAlmostEqual( 0.225, result[1], places=6 )
 
     def test__terrain_type_loss__has_gradient(self):
         self.assertTrue( sft.loss_has_gradient( lnz.terrain_type_loss, output_shape=(2,2,2) ) )
@@ -354,8 +359,13 @@ class test_land_and_sea(unittest.TestCase):
         # print("RESULT=",result)
 
         # assertions
-        # self.assertEqual( 0., tf.get_static_value( result ) )
-        self.assertEqual( 'tf.Tensor([0.99999976 0.99999976 0.99999976], shape=(3,), dtype=float32)', str(result) )
+        self.assertEqual('(3,)',str(result.shape))
+        self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
+
+        value = tensor_to_value( result )
+        self.assertAlmostEqual( 1., result[0], places=6 )
+        self.assertAlmostEqual( 1., result[0], places=6 )
+        self.assertAlmostEqual( 1., result[0], places=6 )
 
     def test__terrain_surface_loss__max_surface(self):
 
@@ -394,7 +404,7 @@ class test_land_and_sea(unittest.TestCase):
         self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
 
         value = tensor_to_value( result )
-        self.assertAlmostEqual( 0, result[0], places=6 )
+        self.assertAlmostEqual( 0., result[0], places=6 )
 
     def test__terrain_surface_loss__mixed(self):
 
@@ -411,8 +421,11 @@ class test_land_and_sea(unittest.TestCase):
         # print("RESULT=",result)
 
         # assertions
-        # self.assertEqual( 0., tf.get_static_value( result ) )
-        self.assertEqual( 'tf.Tensor([0.241292], shape=(1,), dtype=float32)', str(result) )
+        self.assertEqual('(1,)',str(result.shape))
+        self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
+
+        value = tensor_to_value( result )
+        self.assertAlmostEqual( 0.241292, result[0], places=6 )
 
     def test__terrain_surface_loss__has_gradient(self):
         self.assertTrue( sft.loss_has_gradient( lnz.terrain_surface_loss, output_shape=(2,2,2) ) )

@@ -1,19 +1,20 @@
 #
 #   functions for use in land_and_sea, isolated for testing
+import sys
+sys.path.append('..')
 
 import tensorflow as tf
 import math
 
+import _utilities.tf_tensor_tools as teto
+
 
 # number of possible output values, one value for each terrain type
 TERRAIN_TYPE_COUNT = 2
-TERRAIN_LOSS_OFFSET = tf.constant( tf.range(0, TERRAIN_TYPE_COUNT) )
-# tf.print("offset=",TERRAIN_LOSS_OFFSET)
-
-SURFACE_GOAL = 0.5
+TERRAIN_TYPE_GOAL = tf.constant( [0.5,0.5] )
+TERRAIN_SURFACE_GOAL = 0.5
 
 PI = math.pi
-HALF = 0.5
 
 @tf.function
 def vee(x):
@@ -36,12 +37,12 @@ def peak(x):
 @tf.function
 def round_vee( x ):
     r"""-1 is at x=0.  1 is at x=+/-1"""
-    return -tf.math.sin( (x+HALF) * PI )
+    return -tf.math.sin( (x+0.5) * PI )
 
 @tf.function
 def round_peak( x ):
     r"""1 is at x=0.  -1 is at x=+/-1"""
-    return tf.math.sin( (x+HALF) * PI )
+    return tf.math.sin( (x+0.5) * PI )
 
 
 @tf.function
@@ -54,11 +55,11 @@ def terrain_loss( y_true, y_pred ):
     Loss is also based on certainty, which is defined as being close to 0 or 1, not 0.5
     """
 
-    type_of_terrain_loss = terrain_type_loss( y_pred )
+    sm_y_pred = teto.supersoftmax( y_pred )
 
-    certainty_loss = terrain_certainty_loss( y_pred )
-
-    surface_loss = terrain_surface_loss( y_pred )
+    type_of_terrain_loss = terrain_type_loss( sm_y_pred )
+    certainty_loss = 0  # terrain_certainty_loss( y_pred )
+    surface_loss = terrain_surface_loss( sm_y_pred )
 
     return type_of_terrain_loss + certainty_loss + surface_loss
 
@@ -71,16 +72,18 @@ def terrain_type_loss(y_pred):
 
     [batch,wide,tall,deep] = y_pred.shape[0:4]
     size = tf.cast( wide * tall, tf.float32 )
-    desired = size/deep
+    # desired = size/deep
 
     counts = tf.reduce_sum( y_pred, axis=2)
     counts = tf.reduce_sum( counts, axis=1)
     # tf.print("counts=",counts)
-    type_distance = ( counts - desired ) / desired
+    type_ratio = counts / size
+    # tf.print("type_ratio=",type_ratio,'shape=',type_ratio.shape)
+    type_distance = type_ratio - TERRAIN_TYPE_GOAL
     # tf.print("type_distance=",type_distance)
 
     veed = vee(type_distance)
-    # tf.print("peaked=",veed)
+    # tf.print("veed=",veed)
     result= tf.reduce_mean( veed, axis=-1 )
     # tf.print("result=",result)
     return result
@@ -129,7 +132,7 @@ def terrain_surface_loss( y_pred ):
     #   then reduce to value [0:1] where zero means close to goal, and 1 means far from goal
     reduce_sum = tf.reduce_sum( tf.reduce_sum( diff_avg, axis=-1 ), -1 ) / size
     # tf.print('reduce_sum=',reduce_sum)
-    result = 2 * vee( reduce_sum - SURFACE_GOAL )
+    result = 2 * vee( reduce_sum - TERRAIN_SURFACE_GOAL )
     # tf.print('result=',result)
 
     # TODO: surface similarity multiplied by type vector produces type/similarity vector

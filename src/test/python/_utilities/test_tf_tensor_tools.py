@@ -29,5 +29,144 @@ class test_tf_tensor_tools(unittest.TestCase):
         self.assertEquals( '[[7. ]\n'
                            ' [4.5]]', str(result) )
 
+########################################################################################################################
+
+    def test__softargmax__1dim(self):
+        input = tf.constant( [1.0,1.1,0.9] )
+        result = teto.softargmax( input )
+        # print('result2=',result)
+        self.assertEqual( 'tf.Tensor(0.99834394, shape=(), dtype=float32)', str(result) )
+
+    def test__softargmax__2dims(self):
+        input = tf.constant( [[1.0,1.1,0.9]] )
+        result = teto.softargmax( input )
+        # print('result2=',result)
+        self.assertEqual( 'tf.Tensor([0.99834394], shape=(1,), dtype=float32)', str(result) )
+
+    def test__softargmax__3dims(self):
+        input = tf.constant( [[[1.0,1.1,0.9]]] )
+        result = teto.softargmax( input )
+        # print('result2=',result)
+        self.assertEqual( 'tf.Tensor([[0.99834394]], shape=(1, 1), dtype=float32)', str(result) )
+
+    def test__softargmax__4dims(self):
+        input = tf.constant( [[[[1.0,1.1,0.9]]]] )
+        result = teto.softargmax( input )
+        # print('result2=',result)
+        self.assertEqual( 'tf.Tensor([[[0.99834394]]], shape=(1, 1, 1), dtype=float32)', str(result) )
+
+    def test__softargmax__4dims_arrayed(self):
+        input = tf.constant( [[[[1.0,1.1,0.9],[0.9,1.0,1.1]],[[2.0,2.1,1.9],[1.9,2.0,2.1]]]] )
+        result = teto.softargmax( input )
+        # print('result2=',result)
+        self.assertEqual( 'tf.Tensor(\n'
+                          '[[[0.99834394 1.9983357 ]\n'
+                          '  [0.99834394 1.9983357 ]]], shape=(1, 2, 2), dtype=float32)', str(result) )
+
+
+########################################################################################################################
+
+    def test__supersoftmax__1dim(self):
+
+        input = tf.constant( [1.0,1.1,0.9] )
+
+        # invocation
+        result = teto.supersoftmax( input )
+        # print('result2=',result)
+
+        # assertions
+        self.assertEqual('(3,)',str(result.shape))
+        self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
+
+        value = teto.tensor_to_value( result )
+        self.assertAlmostEqual( 0., result[0], places=2 )
+        self.assertAlmostEqual( 1., result[1], places=2 )
+        self.assertAlmostEqual( 0., result[2], places=2 )
+
+    def test__supersoftmax__2dims(self):
+
+        input = tf.constant( [[1.0,1.1,0.9]] )
+
+        # invocation
+        result = teto.supersoftmax( input )
+        # print('result2=',result)
+
+        # assertions
+        self.assertEqual('(1, 3)',str(result.shape))
+        self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
+
+        value = teto.tensor_to_value( result )
+        self.assertAlmostEqual( 0., result[0][0], places=2 )
+        self.assertAlmostEqual( 1., result[0][1], places=2 )
+        self.assertAlmostEqual( 0., result[0][2], places=2 )
+
+        # self.assertEqual( 'tf.Tensor([0.99834394], shape=(1,), dtype=float32)', str(result) )
+
+    def test__supersoftmax__3dims(self):
+
+        input = tf.constant( [[[1.0,1.1,0.9]]] )
+
+        # invocation
+        result = teto.supersoftmax( input )
+        # print('result2=',result)
+
+        # assertions
+        self.assertEqual('(1, 1, 3)',str(result.shape))
+        self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
+
+        value = teto.tensor_to_value( result )
+        self.assertAlmostEqual( 0., result[0][0][0], places=2 )
+        self.assertAlmostEqual( 1., result[0][0][1], places=2 )
+        self.assertAlmostEqual( 0., result[0][0][2], places=2 )
+
+        # self.assertEqual( 'tf.Tensor([[0.99834394]], shape=(1, 1), dtype=float32)', str(result) )
+
+    def test__supersoftmax__4dims(self):
+
+        input = tf.constant( [[[[1.0,1.1,0.9]]]] )
+
+        #invocation
+        result = teto.supersoftmax( input )
+        # print('result2=',result)
+
+        # assertions
+        self.assertEqual('(1, 1, 1, 3)',str(result.shape))
+        self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
+
+        value = teto.tensor_to_value( result )
+        self.assertAlmostEqual( 0., result[0][0][0][0], places=2 )
+        self.assertAlmostEqual( 1., result[0][0][0][1], places=2 )
+        self.assertAlmostEqual( 0., result[0][0][0][2], places=2 )
+
+    def test__supersoftmax__4dims_arrayed(self):
+
+        input = tf.constant( [[[[1.0,1.1,0.9],[0.9,1.0,1.1]],[[2.0,2.1,1.9],[1.9,2.0,2.1]]]] )
+
+        # invocation
+        result = teto.supersoftmax( input )
+        # print('result2=',result)
+
+        # assertions
+        self.assertEqual('(1, 2, 2, 3)',str(result.shape))
+        self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
+
+        value = teto.tensor_to_value( result )
+        self.assertAlmostEqual( 0., result[0][0][0][0], places=2 )
+        self.assertAlmostEqual( 1., result[0][0][0][1], places=2 )
+        self.assertAlmostEqual( 0., result[0][0][0][2], places=2 )
+
+        self.assertAlmostEqual( 0., result[0][0][1][0], places=2 )
+        self.assertAlmostEqual( 0., result[0][0][1][1], places=2 )
+        self.assertAlmostEqual( 1., result[0][0][1][2], places=2 )
+
+        self.assertAlmostEqual( 0., result[0][1][0][0], places=2 )
+        self.assertAlmostEqual( 1., result[0][1][0][1], places=2 )
+        self.assertAlmostEqual( 0., result[0][1][0][2], places=2 )
+
+        self.assertAlmostEqual( 0., result[0][1][1][0], places=2 )
+        self.assertAlmostEqual( 0., result[0][1][1][1], places=2 )
+        self.assertAlmostEqual( 1., result[0][1][1][2], places=2 )
+
+
 if __name__ == '__main__':
     unittest.main()
