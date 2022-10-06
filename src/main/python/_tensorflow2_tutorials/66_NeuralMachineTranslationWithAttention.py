@@ -7,8 +7,10 @@
 #   This code is identical to what is presented on the tutorial page except for:
 #       header comments
 #       removed ipython syntax
+#       comments and print statements to clarify what is being displayed
 #
 #   Code tested with:
+#       Tensorflow 2.8.0/cpuOnly  ( complains about Cudart64_110.dll, but functions )
 #
 
 # pip install "tensorflow-text==2.8.*"
@@ -88,24 +90,29 @@ def load_data(path):
 
     return targ, inp
 
+# load and display sample of datasets
 targ, inp = load_data(path_to_file)
+
+print("\n\bDISPLAYED: Last line of spanish then english data:")
 print(inp[-1])
-
-
 print(targ[-1])
+print("\n")
 
-
+# prepare target and input as tensor datasets
 BUFFER_SIZE = len(inp)
 BATCH_SIZE = 64
 
 dataset = tf.data.Dataset.from_tensor_slices((inp, targ)).shuffle(BUFFER_SIZE)
 dataset = dataset.batch(BATCH_SIZE)
 
+
+print("\nDISPLAYED: first five lines from randomized datasets, spanish then english")
 for example_input_batch, example_target_batch in dataset.take(1):
     print(example_input_batch[:5])
     print()
     print(example_target_batch[:5])
     break
+print('\n\n')
 
 # tf.Tensor(
 #     [b'Tom y Mary se ayudaron mutuamente con los deberes.'
@@ -120,8 +127,12 @@ for example_input_batch, example_target_batch in dataset.take(1):
 
 example_text = tf.constant('¿Todavía está en casa?')
 
-print(example_text.numpy())
-print(tf_text.normalize_utf8(example_text, 'NFKD').numpy())
+print("\nDISPLAYED: some example text as numpy byte array, then as UTF-8 numpy byte array")
+print("text: ¿Todavía está en casa?")
+print("note: special characters are first question mark, first i, and third a")
+print("byte array: ",example_text.numpy())
+print("UTF-8 byte array:",tf_text.normalize_utf8(example_text, 'NFKD').numpy())
+print("\n\n")
 
 # b'\xc2\xbfTodav\xc3\xada est\xc3\xa1 en casa?'
 # b'\xc2\xbfTodavi\xcc\x81a esta\xcc\x81 en casa?'
@@ -141,8 +152,10 @@ def tf_lower_and_split_punct(text):
     text = tf.strings.join(['[START]', text, '[END]'], separator=' ')
     return text
 
-print(example_text.numpy().decode())
-print(tf_lower_and_split_punct(example_text).numpy().decode())
+print("\nDISPLAYED: example text as string; then tagged, spaced and as string ( ready to tokenize )")
+print("string:",example_text.numpy().decode())
+print("tagged:",tf_lower_and_split_punct(example_text).numpy().decode())
+print("\n\n")
 
 # ¿Todavía está en casa?
 # [START] ¿ todavia esta en casa ? [END]
@@ -157,24 +170,27 @@ input_text_processor = tf.keras.layers.TextVectorization(
 
 input_text_processor.adapt(inp)
 
-# Here are the first 10 words from the vocabulary:
-print( "First Ten Words:", input_text_processor.get_vocabulary()[:10] )
-
-# ['', '[UNK]', '[START]', '[END]', '.', 'que', 'de', 'el', 'a', 'no']
-
-
 output_text_processor = tf.keras.layers.TextVectorization(
     standardize=tf_lower_and_split_punct,
     max_tokens=max_vocab_size)
 
 output_text_processor.adapt(targ)
-print( "First Ten Translated:", output_text_processor.get_vocabulary()[:10] )
 
+# Here are the first 10 words from the vocabulary:
+print("\nDISPLAYED: first ten words from vocabulary, then first ten words translated")
+print( "First Ten Words:", input_text_processor.get_vocabulary()[:10] )
+print( "First Ten Translated:", output_text_processor.get_vocabulary()[:10] )
+print("\n\n")
+
+# ['', '[UNK]', '[START]', '[END]', '.', 'que', 'de', 'el', 'a', 'no']
 # ['', '[UNK]', '[START]', '[END]', '.', 'the', 'i', 'to', 'you', 'tom']
 
 
 example_tokens = input_text_processor(example_input_batch)
+
+print("\nDISPLAYED: first three lines of input batch converted to tokens")
 print( example_tokens[:3, :10] )
+print("\n\n")
 
 # <tf.Tensor: shape=(3, 10), dtype=int64, numpy=
 # array([[   2,   10,   33,   32,   17,    1, 2977,   27,   26,  746],
@@ -184,7 +200,10 @@ print( example_tokens[:3, :10] )
 
 input_vocab = np.array(input_text_processor.get_vocabulary())
 tokens = input_vocab[example_tokens[0].numpy()]
-print( ' '.join(tokens) )
+
+print("\nDISPLAYED: first line from input batch converted from tokens to vocabulary from text processor")
+print( "line:", ' '.join(tokens) )
+print('\n\n')
 
 # '[START] tom y mary se [UNK] mutuamente con los deberes . [END]
 
