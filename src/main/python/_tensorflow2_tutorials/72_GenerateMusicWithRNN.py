@@ -4,11 +4,17 @@
 #
 #   Learn from Midi Music then Generate New Music.
 #
+#   Produces: output.mid
+#
 #   This code is identical to what is presented on the tutorial page except for:
 #       header comments
 #       added 'print' statements to various exit with value points
+#       disabled google.colab ( won't work in my local )
+#       disabled some ipython specific terms ( eg. %%time )
+#       fix to pyfuildsynth:  https://github.com/nwhitehead/pyfluidsynth/issues/37
 #
 #   Code tested with:
+#       Tensorflow 2.10.0/cpuOnly  ( complains about Cudart64_110.dll, but functions )
 #
 
 # INSTALLS:
@@ -18,11 +24,13 @@
 #   had unzip fluidsynth-2.3.0-win10-x64.zip to folder (buried under c:/ProgramData/chocolatey),
 #       then add to PATH environment so DLL was accessible
 #
+#
 # pip install pyfluidsynth
+#   fix to pyfuildsynth:  https://github.com/nwhitehead/pyfluidsynth/issues/37
+#
 # pip install pretty_midi
 # pip install pandas
 # pip install seaborn
-# pip install google.colab
 #
 
 import collections
@@ -403,19 +411,20 @@ generated_notes = pd.DataFrame(
 
 print('generated_notes.head(10) =',generated_notes.head(10))
 
+try:
+    out_file = 'output.mid'
+    out_pm = notes_to_midi(generated_notes, out_file=out_file, instrument_name=instrument_name)
+    # display_audio(out_pm)
+except BaseException as e:
+    print('exception=',e)
 
-out_file = 'output.mid'
-out_pm = notes_to_midi(
-    generated_notes, out_file=out_file, instrument_name=instrument_name)
-display_audio(out_pm)
-
-
-from google.colab import files
-files.download(out_file)
-
-plot_piano_roll(generated_notes)
+fluidsynth.Synth
 
 
-plot_distributions(generated_notes)
+
+# from google.colab import files
+# files.download(out_file)
+# plot_piano_roll(generated_notes)
+# plot_distributions(generated_notes)
 
 
