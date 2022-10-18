@@ -25,6 +25,7 @@ def try_load_weights( ckpt_file, model ) :
     if os.path.exists(ckpt_file+'.index') :
         try:
             model.load_weights( ckpt_file )
+            return True
         except ( builtins.ValueError, errimp.NotFoundError ) as e1:
             model.set_weights(temp)
             print("Old model does not match new model, not loading weights")
@@ -32,8 +33,10 @@ def try_load_weights( ckpt_file, model ) :
             # try_delete( "checkpoint" )
             # try_delete( ckpt_file + ".index" )
             # try_delete( ckpt_file + ".data-00000-of-00001" )
+            return False
         except Exception as e2:
             print('Failed to load weights: '+ str(e2) )
+            return False
 
 def try_save_weights( ckpt_file, model ) :
     r"""Try to load weights for a model from a checkpoint.
