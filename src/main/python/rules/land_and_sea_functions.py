@@ -11,10 +11,23 @@ import _utilities.tf_tensor_tools as teto
 
 # number of possible output values, one value for each terrain type
 TERRAIN_TYPE_COUNT = 2
-TERRAIN_TYPE_GOAL = tf.constant( [0.5,0.5] )
-TERRAIN_SURFACE_GOAL = 0.5
-
 PI = math.pi
+
+
+
+TERRAIN_TYPE_GOAL = tf.Variable( [0.5,0.5] )
+TERRAIN_SURFACE_GOAL = tf.Variable( 0.5 )
+
+@tf.function
+def set_terrain_type_goal( ttg ):
+    global TERRAIN_TYPE_GOAL
+    TERRAIN_TYPE_GOAL.assign( ttg )
+
+@tf.function
+def set_terrain_surface_goal( tsg ):
+    global TERRAIN_SURFACE_GOAL
+    TERRAIN_SURFACE_GOAL.assign( tsg )
+
 
 @tf.function
 def vee(x):
@@ -29,10 +42,6 @@ def vee(x):
 def peak(x):
     r"""Linear inverted V shape, 0 at x=0, and -1 at x=-1|+1"""
     return tf.where( x<0, x, -x )
-    # if (x<0.5):
-    #     return 2*x
-    # else:
-    #     return 2*(1-x)
 
 @tf.function
 def round_vee( x ):
@@ -57,11 +66,16 @@ def terrain_loss( y_true, y_pred ):
 
     sm_y_pred = teto.supersoftmax( y_pred )
 
-    type_of_terrain_loss = terrain_type_loss( sm_y_pred )
+    terrain_loss = terrain_type_loss( sm_y_pred )
     certainty_loss = 0  # terrain_certainty_loss( y_pred )
     surface_loss = terrain_surface_loss( sm_y_pred )
 
-    return type_of_terrain_loss + certainty_loss + surface_loss
+    with tf.GradientTape() as t:
+        t.watch(terrain_loss)
+        # t.watch(certainty_loss)
+        t.watch(surface_loss)
+
+    return terrain_loss + certainty_loss + surface_loss
 
 
 @tf.function
@@ -109,7 +123,10 @@ def terrain_certainty_loss(y_pred):
 @tf.function
 def terrain_surface_loss( y_pred ):
     r"""'Surface' is a measure of the terrain changes accross cells.
-    It is a crude representation of the fractal level of the output."""
+    It is a crude representation of the fractal level of the output.
+    Cells are logits summing to 1.  Values are in range [0,1]
+    Same values = -1; Max difference is 90 degrees = -0
+    Cells cannot actually be opposite ( which would be +1 )"""
     # tf.print('start=',y_pred)
 
     [batch,wide,tall,deep] = y_pred.shape[0:4]
@@ -117,25 +134,25 @@ def terrain_surface_loss( y_pred ):
 
     rollh = tf.roll( y_pred, 1, 2  )
     # tf.print('rollh=',rollh)
-    diffh = -tf.keras.losses.cosine_similarity(y_pred, rollh, axis=-1 )
+    diffh = tf.keras.losses.cosine_similarity(y_pred, rollh, axis=-1 )
     # tf.print('diffh=',diffh)
 
     rollv = tf.roll( y_pred, 1, 1  )
     # tf.print('rollv=',rollv)
-    diffv = -tf.keras.losses.cosine_similarity(y_pred, rollv, axis=-1 )
+    diffv = tf.keras.losses.cosine_similarity(y_pred, rollv, axis=-1 )
     # tf.print('diffv=',diffv)
 
     diff_avg= ( diffh + diffv ) / 2.
     # tf.print('diff_avg=',diff_avg)
 
-    # add together a count of 'similar', so range[0:size]
-    #   then reduce to value [0:1] where zero means close to goal, and 1 means far from goal
-    reduce_sum = tf.reduce_sum( tf.reduce_sum( diff_avg, axis=-1 ), -1 ) / size
-    # tf.print('reduce_sum=',reduce_sum)
-    result = 2 * vee( reduce_sum - TERRAIN_SURFACE_GOAL )
+    same_count = tf.reduce_sum( tf.reduce_sum( diff_avg, axis=-1 ), -1 ) / size
+    # tf.print('same_count(negative)=',same_count)
+    change_count = 1. + same_count
+    # tf.print('change_sum=',change_count)
+    # tf.print('TERRAIN_SURFACE_GOAL=',TERRAIN_SURFACE_GOAL)
+    result = 2 * vee( change_count - TERRAIN_SURFACE_GOAL )
     # tf.print('result=',result)
 
     # TODO: surface similarity multiplied by type vector produces type/similarity vector
     #       and goal is expressed as vector of similarity by type
     return result
-
