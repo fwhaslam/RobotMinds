@@ -13,10 +13,13 @@ import _utilities.tf_tensor_tools as teto
 TERRAIN_TYPE_COUNT = 2
 PI = math.pi
 
-
+# one color per terrain type
+TERRAIN_ONE_HOT_COLOR = tf.constant( ((0,255,0),(0,0,255)) )
 
 TERRAIN_TYPE_GOAL = tf.Variable( [0.5,0.5] )
 TERRAIN_SURFACE_GOAL = tf.Variable( 0.5 )
+
+
 
 @tf.function
 def set_terrain_type_goal( ttg ):
@@ -64,18 +67,27 @@ def terrain_loss( y_true, y_pred ):
     Loss is also based on certainty, which is defined as being close to 0 or 1, not 0.5
     """
 
+    # print('y_true.shape=',y_true.shape)
+    # print('y_pred.shape=',y_pred.shape)
+    # if True: return [0.]
+
+    sqdf = tf.math.squared_difference( y_true, y_pred )
+    # print('sqdf=',sqdf)
+    template_mse = tf.math.reduce_mean( sqdf )
+    # print('template_mse=',template_mse)
+
+    # move values close to one_hot
     sm_y_pred = teto.supersoftmax( y_pred )
 
     terrain_loss = terrain_type_loss( sm_y_pred )
-    certainty_loss = 0  # terrain_certainty_loss( y_pred )
     surface_loss = terrain_surface_loss( sm_y_pred )
 
     with tf.GradientTape() as t:
-        t.watch(terrain_loss)
-        # t.watch(certainty_loss)
-        t.watch(surface_loss)
+        t.watch( template_mse )
+        t.watch( terrain_loss )
+        t.watch( surface_loss )
 
-    return terrain_loss + certainty_loss + surface_loss
+    return template_mse + terrain_loss + surface_loss
 
 
 @tf.function
@@ -156,3 +168,47 @@ def terrain_surface_loss( y_pred ):
     # TODO: surface similarity multiplied by type vector produces type/similarity vector
     #       and goal is expressed as vector of similarity by type
     return result
+
+########################################################################################################################
+#   Image Processing
+
+TEMPLATE_SCALE = 32768.0
+TEMPLATE_RANGE = TEMPLATE_SCALE / TERRAIN_TYPE_COUNT
+
+def image_to_template( image ):
+    r"""Create a 'template' image created from the available terrain types.
+    The goal is to bring some of the original image information into the result,
+        by adding a loss value based on divergence from the template.
+    image = is shape (batch, WIDE, TALL, CHANNELS) of float [0,1)
+    result = is shape (batch, WIDE, TALL, TERRAIN_TYPE_COUNT) of int(0/1)"""
+
+    # tf.print( 'image=', image )
+
+    # shift from [0,1) representation
+    work = tf.cast( tf.multiply( image, TEMPLATE_SCALE ), tf.int16 )
+    # tf.print( 'work=', work )
+
+    # split into three layers
+    w1,w2,w3 = tf.split( work, 3, axis=-1)
+    # work = tf.slice( (0,0,0,0), (1,1,1,2), work )
+    # tf.print( 'w1=', w1 )
+    # tf.print( 'w2=', w2 )
+    # tf.print( 'w3=', w3 )
+
+    # combine bits for all three layers
+    work = tf.bitwise.bitwise_xor( w1,w2)
+    # tf.print('xor1=',work)
+    work = tf.bitwise.bitwise_xor( work,w3)
+    # tf.print('xor2=',work)
+
+    # divide by range, int for terrain type, one-hot for comparison
+    work = tf.cast( tf.divide( tf.cast(work,tf.float32), TEMPLATE_RANGE ), tf.int32 )
+    # tf.print('count=',work)
+
+    work = tf.one_hot( work, TERRAIN_TYPE_COUNT )
+    # tf.print('one_hot=',work)
+
+    work = tf.squeeze( work, axis=-2 )
+    # tf.print('squeeze=',work)
+
+    return work
