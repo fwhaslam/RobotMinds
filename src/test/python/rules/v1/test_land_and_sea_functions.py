@@ -1,6 +1,6 @@
 import sys
-sys.path.append('..')
-sys.path.append('../../../main/python')
+sys.path.append('../..')
+sys.path.append('../../../../main/python')
 
 import tensorflow as tf
 import numpy as np
@@ -15,7 +15,7 @@ import builtins
 import contextlib, io
 
 # module under test
-import rules.land_and_sea_functions as lnz
+import rules.v1.land_and_sea_functions as lnz
 
 
 class test_land_and_sea(unittest.TestCase):
@@ -93,16 +93,22 @@ class test_land_and_sea(unittest.TestCase):
     def test__terrain_loss__perfect(self):
 
         # logits to [[1,0],[1,1]]
-        element = [[[0.,1.],
+        input = [[[0.,1.],
                     [1.,0.]],
                    [[0.,1.],
                     [1.,0.]]]
         # batch_size=3, wide/tall=2x2, types=2
-        input = tf.constant( [element,element,element]  )
+        inputs = tf.constant( [input,input,input]  )
         # tf.print("Input=",tf.shape(input))
+        template = [[[0.,1.],
+                  [1.,0.]],
+                 [[0.,1.],
+                  [1.,0.]]]
+        # batch_size=3, wide/tall=2x2, types=2
+        templates = tf.constant( [template,template,template]  )
 
         # invocation
-        result = lnz.terrain_loss( None, input )
+        result = lnz.terrain_loss( templates, inputs )
         # tf.print("RESULT=",result)
         # tf.print("RESULT=",tf.get_static_value(result))
 
@@ -118,40 +124,52 @@ class test_land_and_sea(unittest.TestCase):
         # test terrain_loss
 
         # logits to [[1,1],[1,1]]
-        element = [[[0.4,0.6],
+        input = [[[0.4,0.6],
                     [0.4,0.6]],
                    [[0.4,0.6],
                     [0.4,0.6]]]
         # batch_size=3, wide/tall=2x2, types=2
-        input = tf.constant( [element,element,element]  )
+        inputs = tf.constant( [input,input,input]  )
         # tf.print("Input=",tf.shape(input))
+        template = [[[0.,1.],
+                    [0.,1.]],
+                   [[0.,1.],
+                    [0.,1.]]]
+        templates = tf.constant( [template,template,template]  )
 
-        # invocation
-        result = lnz.terrain_loss( None, input )
+
+    # invocation
+        result = lnz.terrain_loss( templates, inputs )
         # tf.print("RESULT=",result)
 
         # assertions
         self.assertEqual('(3,)',str(result.shape))
         self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
 
-        self.assertAlmostEqual( 1.4999973, result[0], places=6 )
-        self.assertAlmostEqual( 1.4999973, result[1], places=6 )
-        self.assertAlmostEqual( 1.4999973, result[2], places=6 )
+        self.assertAlmostEqual( 1.6599972, result[0], places=6 )
+        self.assertAlmostEqual( 1.6599972, result[1], places=6 )
+        self.assertAlmostEqual( 1.6599972, result[2], places=6 )
 
     def test__terrain_loss__types_failure(self):
         # test terrain_loss
 
         # logits to [[1,1],[1,1]]
-        element = [[[0.,1.],
+        input = [[[0.,1.],
                     [0.,1.]],
                    [[0.,1.],
                     [0.,1.]]]
         # batch_size=3, wide/tall=2x2, types=2
-        input = tf.constant( [element,element,element]  )
+        inputs = tf.constant( [input,input,input]  )
         # tf.print("Input=",tf.shape(input))
 
+        template = [[[0.,1.],
+                  [0.,1.]],
+                 [[0.,1.],
+                  [0.,1.]]]
+        templates = tf.constant( [template,template,template]  )
+
         # invocation
-        result = lnz.terrain_loss( None, input )
+        result = lnz.terrain_loss( templates, inputs )
         # print("RESULT=",result)
 
         # assertions
@@ -452,11 +470,32 @@ class test_land_and_sea(unittest.TestCase):
             self.assertAlmostEqual( 0.066667, result[0], places=6 )
         finally:
             lnz.set_terrain_surface_goal( old_value )
-            print("lnz.TERRAIN_SURFACE_GOAL=",lnz.TERRAIN_SURFACE_GOAL)
+            # print("lnz.TERRAIN_SURFACE_GOAL=",lnz.TERRAIN_SURFACE_GOAL)
 
 
     def test__terrain_surface_loss__has_gradient(self):
         self.assertTrue( sft.loss_has_gradient( lnz.terrain_surface_loss, output_shape=(2,2,2) ) )
+
+########################################################################################################################
+
+    def test__image_to_template(self):
+
+        # shape = (1,   2,2,    3)
+        input = tf.constant( [[[[0,0,0],[0.25,0.25,0.25]],
+                               [[0.5,0.5,0.5],[0.75,0.75,0.75]]]])
+
+        # invocation
+        result = lnz.image_to_template( input )
+
+        # assertion
+        # print('result=',result)
+        self.assertEqual("""tf.Tensor(
+[[[[1. 0.]
+   [1. 0.]]
+
+  [[0. 1.]
+   [0. 1.]]]], shape=(1, 2, 2, 2), dtype=float32)""", str(result))
+
 
 ########################################################################################################################
 

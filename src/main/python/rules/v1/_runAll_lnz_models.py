@@ -17,6 +17,4 @@ os.system('python lnz_pics_via_runner.py v3')
 os.system('python lnz_pics_via_runner.py v4')
 os.system('python lnz_pics_via_runner.py v5')
 
-# py_compile.compile(path)
-
 os.system('python lnz_double_output_via_runner.py')
