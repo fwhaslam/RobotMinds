@@ -1,7 +1,7 @@
 #
 #   functions for use in land_and_sea, isolated for testing
 import sys
-sys.path.append('..')
+sys.path.append('../..')
 
 import tensorflow as tf
 import math

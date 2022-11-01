@@ -7,7 +7,7 @@
 #
 
 import sys
-sys.path.append('..')
+sys.path.append('../..')
 
 # common
 import os as os

@@ -1,18 +1,17 @@
 #
-#   This variation uses random images as a starting point.
+#   This variation uses cifar10 images as a starting point.
 #
-#   The question I want to answer is: can we start from completely random images and create acceptable ratios by rules?
+#   The idea is that more regular ( non-random ) images may be easier to map into fixed terrain ratios.
 #
 
 import sys
-sys.path.append('..')
+sys.path.append('../..')
 
 # common
 import os as os
 import numpy as np
 import random as rnd
 from pathlib import Path
-# import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -33,59 +32,43 @@ plt.ion()
 set_terrain_type_goal( [0.7,0.3] )
 set_terrain_surface_goal( 0.2 )
 
-# # check the dataset parameters
-# print("train[s]=", str(train_images.shape) )
-# print("len=", str(len(train_labels)) )
-# print("train labels = ", str(train_labels.shape) )
-# print("test labels = ", str(test_labels.shape) )
-# print("image shape = ", str(test_images.shape) )
-# print("len(labels) = ", len(test_labels) )
-
 IMAGE_CHANNELS = 3
 WIDE = TALL = 32
-
 INPUT_SHAPE = (WIDE, TALL, IMAGE_CHANNELS)
-MAP_SHAPE =  (WIDE, TALL, TERRAIN_TYPE_COUNT)
-IMAGE_RESIZE = list(INPUT_SHAPE[:2])     #  [wide,tall]
 
-EPOCHS = 5  # 10
-SKIP = 1       # only process one out of SKIP from available images :: 1 = keep all
+FLAVOR = 'pics'
 
-FLAVOR = 'rand'
+# MAP_SHAPE =  (WIDE, TALL, TERRAIN_TYPE_COUNT)
+# IMAGE_RESIZE = list(INPUT_SHAPE[:2])     #  [wide,tall]
+# EPOCHS = 5  # 10
 
 #######################################################################
-#   Random Image Dataset
+#   cifar-10 object image dataset
 
-def random_image(wide,tall,channels):
-    r"""Create a grid of floats in range [0-1)."""
-    grid = np.empty((wide,tall,channels))
-    for col in grid:
-        for row in range(tall):
-            for chan in range(channels):
-                col[row][chan] = rnd.random()
-    return grid
+# dataset = tf.keras.datasets.cifar10.load_data()
+# select_images = dataset.cache().shuffle().take(1000)
+# print('select_images=',select_images)
 
-def load_random_features( count ):
-    features = np.empty((count,) + INPUT_SHAPE)
-    for index in range(count):
-        features[index] = random_image(*INPUT_SHAPE)
-    return features
+(train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.cifar10.load_data()
 
-random_features = load_random_features( 1000 )
-print("RandomFeaturesShape=",tf.shape(random_features))
+train_images = train_images / 255.0
+# test_images = test_images / 255.0
+
+object_features = tf.random.shuffle( train_images, 54321 )[:1000]
+print("object_features=",tf.shape(object_features))
 
 #######################################################################
 
-features = random_features  # + terrain_features
+features = object_features # + random_features # + terrain_features
 template_image_set = image_to_template( features )
-
 
 tf.random.shuffle( features, 12345 )
 tflen = len(features)
 train_segment = (int)(tflen * .8)
 print("train_segment=",train_segment)
 
-
+# train_images = list(features)[ 0 : train_segment ]
+# test_images = list(features)[ train_segment : tflen-train_segment ]
 train_images = features[ 0 : train_segment ]
 train_image_set = template_image_set[ 0 : train_segment ]
 test_images = features[ train_segment : tflen ]
@@ -95,9 +78,6 @@ print("Original len=",tflen)
 print("TrainImage len=",len(train_images))
 print("TestImage len=",len(test_images))
 
-# inspect first image in dataset
-
-lastFigure = None       # record the last displayed figure so it can be closed automatically
 
 ########################################################################################################################
 # create model
@@ -170,9 +150,9 @@ def create_model_v4( shape ):
     outputs = x
 
     model = tf.keras.Model(inputs=inputs, outputs=outputs,name=FLAVOR+'_model_v4')
-    model.compile( optimizer=tf.keras.optimizers.Adam(0.001),
-                   loss=terrain_loss,
-                   metrics=['accuracy'] )
+    # model.compile( optimizer=tf.keras.optimizers.Adam(0.001),
+    #                loss=terrain_loss,
+    #                metrics=['accuracy'] )
     return model, tf.keras.optimizers.Adam(0.001), terrain_loss
 
 def create_model_v3( shape ):
@@ -185,10 +165,10 @@ def create_model_v3( shape ):
     outputs = x
 
     model = tf.keras.Model(inputs=inputs, outputs=outputs,name=FLAVOR+'_model_v3')
-    # model.compile( optimizer=tf.keras.optimizers.Adam(0.00001),
+    # model.compile( optimizer=tf.keras.optimizers.Adam(0.0001),
     #                loss=terrain_loss,
     #                metrics=['accuracy'] )
-    return model, tf.keras.optimizers.Adam(0.00001), terrain_loss
+    return model, tf.keras.optimizers.Adam(0.0001), terrain_loss
 
 def create_model_v2( shape ):
 
@@ -200,9 +180,9 @@ def create_model_v2( shape ):
     outputs = x
 
     model = tf.keras.Model(inputs=inputs, outputs=outputs,name=FLAVOR+'_model_v2')
-    # model.compile( optimizer=tf.keras.optimizers.Adam(0.001),
-    #                loss=terrain_loss,
-    #                metrics=['accuracy'] )
+    model.compile( optimizer=tf.keras.optimizers.Adam(0.001),
+                   loss=terrain_loss,
+                   metrics=['accuracy'] )
     return model, tf.keras.optimizers.Adam(0.001), terrain_loss
 
 def create_model_v1( shape ):
@@ -254,7 +234,7 @@ match model_id:
 
 from lnz_runner import lnz_runner
 
-ckpt_folder = 'landnsea_ckpt/random/' + model_id
+ckpt_folder = 'landnsea_ckpt/cifar10/' + model_id
 
 lnz_runner(
     FLAVOR,
@@ -264,4 +244,5 @@ lnz_runner(
     test_images,test_image_set,
     ckpt_folder
 )
+
 
