@@ -54,6 +54,9 @@ CHECKPOINT_FILE = 'landnsea_ckpt/checkpoint'
 BATCH_SIZE = 1
 plt.ion()
 
+set_terrain_type_goal( [0.3,0.7] )
+set_terrain_surface_goal( 0.25 )
+
 # # check the dataset parameters
 # print("train[s]=", str(train_images.shape) )
 # print("len=", str(len(train_labels)) )
@@ -69,7 +72,7 @@ INPUT_SHAPE = (WIDE, TALL, IMAGE_CHANNELS)
 MAP_SHAPE =  (WIDE, TALL, TERRAIN_TYPE_COUNT)
 IMAGE_RESIZE = list(INPUT_SHAPE[:2])     #  [wide,tall]
 
-EPOCHS = 10
+EPOCHS = 5  # 10
 SKIP = 1       # only process one out of SKIP from available images :: 1 = keep all
 
 ######################################################################
@@ -207,19 +210,19 @@ lastFigure = None       # record the last displayed figure so it can be closed a
 ########################################################################################################################
 # create model
 
-def trim_layer(filters,size,strides=1):
+def trim_layer_lrelu(filters,size,strides=1):
     result = tf.keras.Sequential()
     result.add(tf.keras.layers.Conv2D(filters, size, strides=strides, padding='same'))
     result.add(InstanceNormalization())
-    result.add(tf.keras.layers.ReLU())
+    result.add(tf.keras.layers.LeakyReLU())
     return result
 
-def grow_layer(filters,size,strides=1):
+def grow_layer_lrelu(filters,size,strides=1):
     result = tf.keras.Sequential()
     result.add(tf.keras.layers.Conv2DTranspose(filters, size, strides=strides, padding='same'))
     result.add(InstanceNormalization())
     result.add(tf.keras.layers.Dropout(0.5))
-    result.add(tf.keras.layers.ReLU())
+    result.add(tf.keras.layers.LeakyReLU())
     return result
 
 def trim_layer_selu(filters,size,strides=1):
@@ -229,7 +232,27 @@ def grow_layer_selu(filters,size,strides=1):
     return tf.keras.layers.Conv2DTranspose(filters, size, strides=strides, padding='same',activation='selu')
 
 
-def create_model_v3( shape ):
+def create_model_v5( shape ):
+
+    units = TERRAIN_TYPE_COUNT * WIDE * TALL
+
+    x = inputs = keras.Input(shape=shape)
+
+    x = keras.layers.Flatten()(x)
+    x = keras.layers.Dense(units,activation='LeakyReLU')(x)
+    x = keras.layers.Reshape( (WIDE,TALL,TERRAIN_TYPE_COUNT) )(x)
+
+    x = trim_layer_lrelu(128,4)(x)
+    x = tf.keras.layers.Conv2D( TERRAIN_TYPE_COUNT, 1, strides=1, padding='same',activation='softmax')(x)
+    outputs = x
+
+    model = tf.keras.Model(inputs=inputs, outputs=outputs,name='model_v5')
+    model.compile( optimizer=tf.keras.optimizers.Adam(0.0001),
+                   loss=terrain_loss,
+                   metrics=['accuracy'] )
+    return model
+
+def create_model_v4( shape ):
 
     x = inputs = keras.Input(shape=shape)
     # tf.print('x0=',x.shape)
@@ -247,8 +270,23 @@ def create_model_v3( shape ):
     x = tf.keras.layers.Conv2DTranspose( TERRAIN_TYPE_COUNT, 1, activation='softmax')(x)   # (bs, 32,32, 2) # softmax for map
     outputs = x
 
-    model = tf.keras.Model(inputs=inputs, outputs=outputs,name='model_v3')
+    model = tf.keras.Model(inputs=inputs, outputs=outputs,name='model_v4')
     model.compile( optimizer=tf.keras.optimizers.Adam(0.001),
+                   loss=terrain_loss,
+                   metrics=['accuracy'] )
+    return model
+
+def create_model_v3( shape ):
+
+    x = inputs = keras.Input(shape=shape)
+    x = trim_layer_selu(128,4)(x)
+    x = trim_layer_selu(128,4)(x)
+    x = trim_layer_selu(128,4)(x)
+    x = tf.keras.layers.Conv2D( TERRAIN_TYPE_COUNT, 1, strides=1, padding='same',activation='softmax')(x)
+    outputs = x
+
+    model = tf.keras.Model(inputs=inputs, outputs=outputs,name='model_v3')
+    model.compile( optimizer=tf.keras.optimizers.Adam(0.00001),
                    loss=terrain_loss,
                    metrics=['accuracy'] )
     return model
@@ -256,9 +294,9 @@ def create_model_v3( shape ):
 def create_model_v2( shape ):
 
     x = inputs = keras.Input(shape=shape)
-    x = trim_layer_selu(128,4)(x)
-    x = trim_layer_selu(128,4)(x)
-    x = trim_layer_selu(128,4)(x)
+    x = trim_layer_lrelu(128,4)(x)
+    x = trim_layer_lrelu(128,4)(x)
+    x = trim_layer_lrelu(128,4)(x)
     x = tf.keras.layers.Conv2D( TERRAIN_TYPE_COUNT, 1, strides=1, padding='same',activation='softmax')(x)
     outputs = x
 
@@ -271,6 +309,7 @@ def create_model_v2( shape ):
 def create_model_v1( shape ):
 
     units = TERRAIN_TYPE_COUNT * WIDE * TALL
+
     x = inputs = keras.Input(shape=shape)
     x = keras.layers.Flatten()(x)
     x = keras.layers.Dense(units,activation='LeakyReLU')(x)
@@ -286,8 +325,29 @@ def create_model_v1( shape ):
                    metrics=['accuracy'] )
     return model
 
+########################################################################################################################
 
-model = create_model_v1(INPUT_SHAPE)
+model_id = 'v1'
+if len(sys.argv)>1:
+    model_id = sys.argv[1]
+print('using model_id =',model_id)
+
+model = None
+
+match model_id:
+    case 'v1':
+        model = create_model_v1(INPUT_SHAPE)
+    case 'v2':
+        model = create_model_v2(INPUT_SHAPE)
+    case 'v3':
+        model = create_model_v3(INPUT_SHAPE)
+    case 'v4':
+        model = create_model_v4(INPUT_SHAPE)
+    case 'v5':
+        model = create_model_v5(INPUT_SHAPE)
+    case _:
+        print('unknown model_id =',model_id)
+        sys.exit(-1)
 
 model.summary()
 
@@ -393,7 +453,7 @@ def draw_image_and_values(work):
 
     global lastFigure
     plt.close( lastFigure )
-    lastFigure = plt.figure()
+    lastFigure = plt.figure( 'rand:'+model.name )
     plt.imshow( display )
 
     # tf.print("values=",values.shape)
@@ -406,6 +466,8 @@ def draw_image_and_values(work):
 
     plt.show()
     plt.pause( 500 )
+    return
+
 
 def display_absolute_terrain_counts( work ):
     # print("Work=",work)
@@ -419,18 +481,21 @@ def display_absolute_terrain_counts( work ):
     print("final work=",work)
 
     # count terrain types
-    ttype = [0] * TERRAIN_TYPE_COUNT
+    ttype = [0.] * TERRAIN_TYPE_COUNT
     for i in range(0, WIDE):
         for j in range(0, TALL):
             index = work[0][i][j]
             ttype[ index ] = ttype[ index ] + 1
 
-    print('Terrain Counts=',ttype,'sum=',np.sum(ttype) )
+    max = WIDE * TALL
+    print('\nTerrain Counts=',ttype,
+          'goal=',tensor_to_value(TERRAIN_TYPE_GOAL),
+          'ratio=', tensor_to_value( tf.constant(ttype) / max ) )
 
     # count transitions
     wide1 = WIDE-1
     tall1 = TALL-1
-    ttrans = [0] * TERRAIN_TYPE_COUNT
+    ttrans = [0.] * TERRAIN_TYPE_COUNT
     for i in range(0, WIDE):
         for j in range(0, TALL):
             index = work[0][i][j]
@@ -443,7 +508,13 @@ def display_absolute_terrain_counts( work ):
 
             ttrans[ index ] = ttrans[ index ] + count
 
-    print('Terrain Transitions=',ttrans,'sum=',np.sum(ttrans) )
+    max = 2 * WIDE * TALL
+    print('Terrain Transitions=',ttrans,
+          'goal=',tensor_to_value( TERRAIN_SURFACE_GOAL ),
+          'ratio=', tensor_to_value( tf.constant(ttrans) / max ) )
+
+    print()
+    return
 
 
 # pick and display one solution

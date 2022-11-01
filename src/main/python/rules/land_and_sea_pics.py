@@ -43,6 +43,7 @@ import tensorflow as tf
 from tensorflow import image, keras
 
 from land_and_sea_functions import *
+from _utilities.tf_tensor_tools import *
 from cycle_gan.tf_layer_tools import *
 
 # tf.compat.v1.enable_eager_execution()
@@ -53,8 +54,8 @@ CHECKPOINT_FILE = 'landnsea_ckpt/checkpoint'
 BATCH_SIZE = 1
 plt.ion()
 
-set_terrain_type_goal( [0.7,0.3] )
-set_terrain_surface_goal( 0.2 )
+set_terrain_type_goal( [0.3,0.7] )
+set_terrain_surface_goal( 0.25 )
 
 # # check the dataset parameters
 # print("train[s]=", str(train_images.shape) )
@@ -65,11 +66,13 @@ set_terrain_surface_goal( 0.2 )
 # print("len(labels) = ", len(test_labels) )
 
 IMAGE_CHANNELS = 3
-WIDE = TALL = 16
+WIDE = TALL = 32
+
 INPUT_SHAPE = (WIDE, TALL, IMAGE_CHANNELS)
-MAP_SHAPE =  (WIDE*2, TALL*2, TERRAIN_TYPE_COUNT)
+MAP_SHAPE =  (WIDE, TALL, TERRAIN_TYPE_COUNT)
 IMAGE_RESIZE = list(INPUT_SHAPE[:2])     #  [wide,tall]
-EPOCHS = 10
+
+EPOCHS = 5  # 10
 SKIP = 1       # only process one out of SKIP from available images :: 1 = keep all
 
 ######################################################################
@@ -181,11 +184,26 @@ def load_random_features( count ):
     return features
 
 random_features = load_random_features( 1000 )
-print("RandomFeaturesShape=",tf.shape(random_features))
+print("random_features=",tf.shape(random_features))
+
+#######################################################################
+#   cifar-10 object image dataset
+
+# dataset = tf.keras.datasets.cifar10.load_data()
+# select_images = dataset.cache().shuffle().take(1000)
+# print('select_images=',select_images)
+
+(train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.cifar10.load_data()
+
+train_images = train_images / 255.0
+# test_images = test_images / 255.0
+
+object_features = tf.random.shuffle( train_images, 54321 )[:1000]
+print("object_features=",tf.shape(object_features))
 
 #######################################################################
 
-features = random_features  # + terrain_features
+features = object_features # + random_features # + terrain_features
 
 tf.random.shuffle( features, 12345 )
 tflen = len(features)
@@ -207,19 +225,19 @@ lastFigure = None       # record the last displayed figure so it can be closed a
 ########################################################################################################################
 # create model
 
-def trim_layer(filters,size,strides=1):
+def trim_layer_lrelu(filters,size,strides=1):
     result = tf.keras.Sequential()
     result.add(tf.keras.layers.Conv2D(filters, size, strides=strides, padding='same'))
     result.add(InstanceNormalization())
-    result.add(tf.keras.layers.ReLU())
+    result.add(tf.keras.layers.LeakyReLU())
     return result
 
-def grow_layer(filters,size,strides=1):
+def grow_layer_lrelu(filters,size,strides=1):
     result = tf.keras.Sequential()
     result.add(tf.keras.layers.Conv2DTranspose(filters, size, strides=strides, padding='same'))
     result.add(InstanceNormalization())
     result.add(tf.keras.layers.Dropout(0.5))
-    result.add(tf.keras.layers.ReLU())
+    result.add(tf.keras.layers.LeakyReLU())
     return result
 
 def trim_layer_selu(filters,size,strides=1):
@@ -228,29 +246,122 @@ def trim_layer_selu(filters,size,strides=1):
 def grow_layer_selu(filters,size,strides=1):
     return tf.keras.layers.Conv2DTranspose(filters, size, strides=strides, padding='same',activation='selu')
 
-def create_model_v1d( shape ):
-    r"""two outputs, one validates image reconstruction"""
+
+def create_model_v5( shape ):
+
+    units = TERRAIN_TYPE_COUNT * WIDE * TALL
 
     x = inputs = keras.Input(shape=shape)
-    # tf.print('x0=',x.shape)
-    x = trim_layer_selu(64,2)(x)                 # ( bs, 16,16, 64 )
-    x = trim_layer_selu(128,2)(x)                         # ( bs, 16,16, 64 )
 
-    x = grow_layer_selu(128,2,2)(x)                         # ( bs, 32,32, 64 )
-    x = grow_layer_selu(128,2,1)(x)                          # ( bs, 32,32, 128 )
+    x = keras.layers.Flatten()(x)
+    x = keras.layers.Dense(units,activation='LeakyReLU')(x)
+    x = keras.layers.Reshape( (WIDE,TALL,TERRAIN_TYPE_COUNT) )(x)
 
-    output1 = tf.keras.layers.Conv2DTranspose( TERRAIN_TYPE_COUNT, 1, activation='softmax')(x)  # (bs, 32,32, 2) # softmax for map
-    tf.print('output1=',output1.shape)
-    output2 = tf.keras.layers.Conv2D( IMAGE_CHANNELS, 2,2, activation='tanh')(x)                # (bs, 16,16, 3) # tanh for image
-    tf.print('output2=',output2.shape)
+    x = trim_layer_lrelu(128,4)(x)
+    x = tf.keras.layers.Conv2D( TERRAIN_TYPE_COUNT, 1, strides=1, padding='same',activation='softmax')(x)
+    outputs = x
 
-    model = tf.keras.Model(inputs=inputs, outputs=[output1,output2] )
-    model.compile( optimizer=tf.keras.optimizers.Adam(0.001),
-                   loss=[ terrain_loss, tf.keras.losses.MeanSquaredError() ],
+    model = tf.keras.Model(inputs=inputs, outputs=outputs,name='model_v5')
+    model.compile( optimizer=tf.keras.optimizers.Adam(0.0001),
+                   loss=terrain_loss,
                    metrics=['accuracy'] )
     return model
 
-model = create_model_v1d(INPUT_SHAPE)
+def create_model_v4( shape ):
+
+    x = inputs = keras.Input(shape=shape)
+    # tf.print('x0=',x.shape)
+    x = trim_layer_selu(64,2,2)(x)       # ( bs, 16,16, 64 )
+    # tf.print('x1=',x.shape)
+    x = trim_layer_selu(192,2,2)(x)       # ( bs, 8,8, 192 )
+    x = trim_layer_selu(512,2,2)(x)       # ( bs, 4,4, 512 )
+    # tf.print('x2=',x.shape)
+
+    x = grow_layer_selu(512,2,2)(x)       # ( bs, 8,8, 512 )
+    x = grow_layer_selu(192,2,2)(x)       # ( bs, 16,16, 192 )
+    x = grow_layer_selu(64,2,2)(x)       # ( bs, 32,32, 64 )
+
+    # x = tf.keras.layers.Conv2DTranspose( TERRAIN_TYPE_COUNT, 1, activation='tanh')(x)   # (bs, 32,32, 2) # tanh for image
+    x = tf.keras.layers.Conv2DTranspose( TERRAIN_TYPE_COUNT, 1, activation='softmax')(x)   # (bs, 32,32, 2) # softmax for map
+    outputs = x
+
+    model = tf.keras.Model(inputs=inputs, outputs=outputs,name='model_v4')
+    model.compile( optimizer=tf.keras.optimizers.Adam(0.001),
+                   loss=terrain_loss,
+                   metrics=['accuracy'] )
+    return model
+
+def create_model_v3( shape ):
+
+    x = inputs = keras.Input(shape=shape)
+    x = trim_layer_selu(128,4)(x)
+    x = trim_layer_selu(128,4)(x)
+    x = trim_layer_selu(128,4)(x)
+    x = tf.keras.layers.Conv2D( TERRAIN_TYPE_COUNT, 1, strides=1, padding='same',activation='softmax')(x)
+    outputs = x
+
+    model = tf.keras.Model(inputs=inputs, outputs=outputs,name='model_v3')
+    model.compile( optimizer=tf.keras.optimizers.Adam(0.0001),
+                   loss=terrain_loss,
+                   metrics=['accuracy'] )
+    return model
+
+def create_model_v2( shape ):
+
+    x = inputs = keras.Input(shape=shape)
+    x = trim_layer_lrelu(128,4)(x)
+    x = trim_layer_lrelu(128,4)(x)
+    x = trim_layer_lrelu(128,4)(x)
+    x = tf.keras.layers.Conv2D( TERRAIN_TYPE_COUNT, 1, strides=1, padding='same',activation='softmax')(x)
+    outputs = x
+
+    model = tf.keras.Model(inputs=inputs, outputs=outputs,name='model_v2')
+    model.compile( optimizer=tf.keras.optimizers.Adam(0.001),
+                   loss=terrain_loss,
+                   metrics=['accuracy'] )
+    return model
+
+def create_model_v1( shape ):
+
+    units = TERRAIN_TYPE_COUNT * WIDE * TALL
+
+    x = inputs = keras.Input(shape=shape)
+    x = keras.layers.Flatten()(x)
+    x = keras.layers.Dense(units,activation='LeakyReLU')(x)
+    x = keras.layers.Dense(units,activation='LeakyReLU')(x)
+    # x = keras.layers.Dense(2048,activation='LeakyReLU')(x)
+    x = keras.layers.Reshape( (WIDE,TALL,TERRAIN_TYPE_COUNT) )(x)
+    x = keras.layers.Activation( 'softmax' )(x)
+    outputs = x
+
+    model = tf.keras.Model(inputs=inputs, outputs=outputs,name='model_v1')
+    model.compile( optimizer=tf.keras.optimizers.Adam(0.001),
+                   loss=terrain_loss,
+                   metrics=['accuracy'] )
+    return model
+
+########################################################################################################################
+
+model_id = 'v2'
+if len(sys.argv)>1:
+    model_id = sys.argv[1]
+print('using model_id =',model_id)
+
+model = None
+match model_id:
+    case 'v1':
+        model = create_model_v1(INPUT_SHAPE)
+    case 'v2':
+        model = create_model_v2(INPUT_SHAPE)
+    case 'v3':
+        model = create_model_v3(INPUT_SHAPE)
+    case 'v4':
+        model = create_model_v4(INPUT_SHAPE)
+    case 'v5':
+        model = create_model_v5(INPUT_SHAPE)
+    case _:
+        print('unknown model_id =',model_id)
+        sys.exit(-1)
 
 model.summary()
 
@@ -271,15 +382,9 @@ model.summary()
 # print( "Variables.Module=",tf.Module.trainable_variables )
 # print( "Variables.model=",model.trainable_variables )
 
-doubler = ImageResize(2,2)
 
-bigger_train_images = doubler( train_images )
-train_image_set = [bigger_train_images,train_images]
-tf.print('bigger_train_images=',bigger_train_images.shape)
-
-bigger_test_images = doubler( test_images )
-test_image_set = [bigger_test_images,test_images]
-tf.print('bigger_test_images=',bigger_test_images.shape)
+train_image_set = train_images
+test_image_set = test_images
 
 model.fit( x=train_images, y=train_image_set,
            epochs=EPOCHS,
@@ -362,7 +467,7 @@ def draw_image_and_values(work):
 
     global lastFigure
     plt.close( lastFigure )
-    lastFigure = plt.figure( 'double:model_v1' )
+    lastFigure = plt.figure( 'pics:'+model.name )
     plt.imshow( display )
 
     # tf.print("values=",values.shape)
@@ -376,6 +481,7 @@ def draw_image_and_values(work):
     plt.show()
     plt.pause( 500 )
     return
+
 
 def display_absolute_terrain_counts( work ):
     # print("Work=",work)
@@ -428,7 +534,8 @@ def display_absolute_terrain_counts( work ):
 # pick and display one solution
 image = test_images[0:1]
 result = model( image )
-[work,pic] = result
+# [work,pic] = result
+work = result
 
 # tf.print('work.shape=',work.shape)
 # tf.print('pic.shape=',pic.shape)
