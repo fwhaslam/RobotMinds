@@ -270,8 +270,8 @@ def generate_and_save_images( model, epoch, test_input ):
     outputs = model(test_input, training=False)
 
     (predictions,labels) = outputs
-    print("predictions=",predictions)
-    print("Label=",labels)
+    # print("predictions=",predictions)
+    # print("Label=",labels)
 
     plt.close()
     plt.figure(figsize=(7, 7))
