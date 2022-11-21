@@ -92,3 +92,6 @@ class SimpleImageCrop(tf.keras.layers.Layer):
 def crop_layer( y, x, tall, wide ):
     r"""Simplified cropping layer."""
     return SimpleImageCrop(y, x, tall, wide)
+
+
+

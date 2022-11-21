@@ -14,18 +14,10 @@
 import sys
 sys.path.append('..')
 
-import tensorflow as tf
-
 import tensorflow_datasets as tfds
-from tensorflow_examples.models.pix2pix import pix2pix
-
-import os
-import time
-import matplotlib.pyplot as plt
-from IPython.display import clear_output
 
 from _utilities.tf_cyclegan_tools import *
-from tf_layer_tools import *
+from _utilities.tf_layer_tools import *
 
 import cyclegan_runner as mgr
 

@@ -21,7 +21,7 @@ sys.path.append('..')
 import tensorflow_datasets as tfds
 
 from _utilities.tf_cyclegan_tools import *
-from tf_layer_tools import *
+from _utilities.tf_layer_tools import *
 import cyclegan_runner as mgr
 
 ########################################################################################################################

@@ -20,22 +20,16 @@
 import sys
 sys.path.append('..')
 
-import tensorflow as tf
-import tensorflow_datasets as tfds
-
 import time
 import matplotlib.pyplot as plt
 from IPython.display import clear_output
 
 import re
 import os
-from os.path import *
 import configparser
-from collections.abc import Callable
-
 
 from _utilities.tf_cyclegan_tools import *
-from tf_layer_tools import *
+from _utilities.tf_layer_tools import *
 
 
 class cyclegan_runner:
