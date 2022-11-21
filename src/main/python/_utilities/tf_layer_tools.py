@@ -1,5 +1,5 @@
 import tensorflow as tf
-
+import numpy as np
 
 class InstanceNormalization(tf.keras.layers.Layer):
     r"""Instance Normalization Layer (https://arxiv.org/abs/1607.08022)."""
@@ -21,6 +21,7 @@ class InstanceNormalization(tf.keras.layers.Layer):
             initializer='zeros',
             trainable=True)
 
+    @tf.function
     def call(self, x):
         mean, variance = tf.nn.moments(x, axes=[1, 2], keepdims=True)
         inv = tf.math.rsqrt(variance + self.epsilon)
@@ -59,12 +60,14 @@ class ImageResize(tf.keras.layers.Layer):
         # tf.print("other=",other)
         return
 
+    @tf.function
     def call(self, inputs):
         work = tf.repeat( inputs, repeats=self.wide, axis=-2 )
         work = tf.repeat( work, repeats=self.tall, axis=-3 )
         return work
 
 
+@tf.function
 def resizing_layer( size ):
     return ImageResize( size, size )
     # return tf.keras.layers.Resizing( size, size, interpolation='nearest' )
@@ -85,6 +88,7 @@ class SimpleImageCrop(tf.keras.layers.Layer):
     def build(self,other):
         return
 
+    @tf.function
     def call(self, inputs):
         return tf.image.crop_to_bounding_box( inputs, self.y, self.x, self.tall, self.wide )
 
@@ -93,5 +97,29 @@ def crop_layer( y, x, tall, wide ):
     r"""Simplified cropping layer."""
     return SimpleImageCrop(y, x, tall, wide)
 
+@tf.function
+def cross_shift( work ):
+    r"""Insert a single row of zeros and a single column of zeros across the center.
+    This is used to expand an even sized matrix that needs to become odd sized."""
 
+    # insert vertical ( axis=1 )
+    mult = shift_matrix( work.shape[1] )
+    work = tf.einsum( 'ijkl,jn->inkl', work, mult )
 
+    # insert horizontal ( axis=2 )
+    mult = shift_matrix( work.shape[2] )
+    work = tf.einsum( 'ijkl,kn->ijnl', work, mult )
+    # print("work=",work)
+
+    return work
+
+# TODO: create dictionary to store these
+@tf.function
+def shift_matrix( size ):
+    split = size / 2
+    mult = np.zeros( (size,1+size) )
+    for ix in range(size):
+        dx = ix if ix<split else 1+ix
+        mult[ix][dx] = 1
+    tf.print('mult=',mult)
+    return tf.cast( mult, tf.float32 )
