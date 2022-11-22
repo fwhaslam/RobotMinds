@@ -97,21 +97,29 @@ def crop_layer( y, x, tall, wide ):
     r"""Simplified cropping layer."""
     return SimpleImageCrop(y, x, tall, wide)
 
-@tf.function
-def cross_shift( work ):
+class CrossShift(tf.keras.layers.Layer):
     r"""Insert a single row of zeros and a single column of zeros across the center.
     This is used to expand an even sized matrix that needs to become odd sized."""
 
-    # insert vertical ( axis=1 )
-    mult = shift_matrix( work.shape[1] )
-    work = tf.einsum( 'ijkl,jn->inkl', work, mult )
+    def __init__(self):
+        super(CrossShift, self).__init__()
 
-    # insert horizontal ( axis=2 )
-    mult = shift_matrix( work.shape[2] )
-    work = tf.einsum( 'ijkl,kn->ijnl', work, mult )
-    # print("work=",work)
+    def build(self,other):
+        return
 
-    return work
+    @tf.function
+    def call(self, inputs):
+
+        # insert vertical ( axis=1 )
+        mult = shift_matrix( inputs.shape[1] )
+        work = tf.einsum( 'ijkl,jn->inkl', inputs, mult )
+
+        # insert horizontal ( axis=2 )
+        mult = shift_matrix( inputs.shape[2] )
+        work = tf.einsum( 'ijkl,kn->ijnl', work, mult )
+        # print("work=",work)
+
+        return work
 
 # TODO: create dictionary to store these
 @tf.function
@@ -121,5 +129,6 @@ def shift_matrix( size ):
     for ix in range(size):
         dx = ix if ix<split else 1+ix
         mult[ix][dx] = 1
-    tf.print('mult=',mult)
+    # tf.print('mult=',mult)
     return tf.cast( mult, tf.float32 )
+
