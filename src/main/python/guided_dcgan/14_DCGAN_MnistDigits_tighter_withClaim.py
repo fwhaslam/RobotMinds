@@ -1,14 +1,11 @@
 #
 #   This code is a modified version of:
-#       93_DCGAN_HandwrittenDigits.py
+#       02_DCGAN_MnistDigits_withIdentity.py
 #
 #   This code is identical to what is presented on the tutorial page except for:
-#       'pip install imageio'
-#       'pip install git+https://github.com/tensorflow/docs'
-#       Added SMALL_MACHINE so I could run on my laptop in a reasonable timeframe
-#       using plt.ion() with plt.pause(30) so training continues when I am away.
-#       using checkpoint_manager to restore both model and epoch_count ( eg. latest_epoch )
-#       images and training going to single subfolder
+#       No label is passed in to generator.
+#       The 'claim' is generated as well as the image.
+#       Generator input is 'random', output is 'image/label'
 #
 #   Code tested with:
 #       Tensorflow 2.10.0/cpuOnly  ( complains about Cudart64_110.dll, but it still functions )
@@ -25,12 +22,14 @@ import tensorflow as tf
 import imageio.v2 as imageio
 import matplotlib.pyplot as plt
 
-from _utilities.tf_tensor_tools import *
+import _utilities.tf_layer_tools as tflt
+import _utilities.tf_tensor_tools as tftt
 
 plt.ion()
 
+
 # model and samples directory
-VERSION = 'v02'
+VERSION = 'v14'
 CHECKPOINT_DIR = f'./guided_dcgan_ckpt/{VERSION}'
 TRAIN_FOLDER = CHECKPOINT_DIR + "/train"
 IMAGE_FOLDER = CHECKPOINT_DIR + "/samples"
@@ -80,11 +79,73 @@ train_dataset = tf.data.Dataset.\
 
 # tf.print('dataset=',train_dataset)      # shows two tensorspecs, so both images + labels are in here
 
-def make_generator_model():
-    r"""Generator will have two inputs ( noise, digit ), and two outputs ( image, digit ).
-    The 'digit' is a value from zero to nine indicating what the image should look like.
-    The output 'digit' will be the same as the input 'digit'.
+########################################################################################################################
+
+class ReverseEmbedding(tf.keras.layers.Layer):
+    r"""Lets call this 'Detaching'.
+    This learns to translate a dense vector into a positive integer.
+
+    Args:
+      input_dim: Integer. Dimension of the dense embedding.
+      output_dim: Integer. Size of the vocabulary,
+        i.e. maximum integer index + 1.
     """
+
+    @tf.function
+    def __init__(self, input_dim, output_dim):
+        super(ReverseEmbedding, self).__init__()
+        self.dense = tf.keras.layers.Dense( output_dim )
+        self.output_dim = output_dim
+
+
+    @tf.function
+    def build(self,other):
+        # tf.print("other=",other)
+        return
+
+    @tf.function
+    def call(self, inputs):
+        x = self.dense( inputs )
+        find = tftt.softargmax( x )
+        return find
+
+
+def make_generator_model():
+    r"""Generator will have one inputs ( noise ), and two outputs ( image, digit ).
+    The 'digit' is a value from zero to nine indicating what the image should look like.
+    NOTE: when I tried it without the 'embed' concatenated, the results were terrible.
+    """
+
+    inputs = x = tf.keras.layers.Input(shape=[NOISE_DIM,])
+    embed = tf.keras.layers.Dense(3)(x)
+    x = tf.keras.layers.Concatenate()( [x,embed] )
+
+    # begin expanding data towards image generation
+    x = tf.keras.layers.Dense( 5*5*256, use_bias=False, activation='selu')(x)
+    x = tf.keras.layers.Reshape((5, 5, 256))(x)
+    assert x.shape == (None, 5,5, 256)  # NOTE: None is the batch size
+
+    x = tf.keras.layers.Conv2DTranspose(128, 5, strides=1, padding='same', use_bias=False, activation='selu')(x)
+    assert x.shape == (None, 5,5, 128)
+
+    x = tf.keras.layers.Conv2DTranspose(64, 3, strides=2, padding='same', use_bias=False, activation='selu')(x)
+    assert x.shape == (None, 10,10, 64)
+    x = tflt.crop_layer( 1,1,8,8 ) (x)
+    assert x.shape == (None, 8,8, 64)
+
+    x = tf.keras.layers.Conv2DTranspose(32, 2, strides=2, padding='same', use_bias=False, activation='selu')(x)
+    assert x.shape == (None, 16,16, 32)
+    x = tflt.crop_layer( 1,1,14,14 ) (x)
+    assert x.shape == (None, 14,14, 32)
+
+    output0 = x = tf.keras.layers.Conv2DTranspose(1, 2, strides=2, padding='same', use_bias=False, activation='tanh')(x)
+    assert x.shape == (None, 28,28, 1)
+
+    output1 = ReverseEmbedding( 3, 10 )( embed )
+
+    return tf.keras.Model(inputs=inputs, outputs=(output0,output1) )
+
+
 
     input0 = tf.keras.layers.Input(shape=[NOISE_DIM,])
     input1 = tf.keras.layers.Input(shape=[1])
@@ -94,27 +155,28 @@ def make_generator_model():
     embed = tf.keras.layers.Flatten()(embed)
     x = tf.keras.layers.Concatenate()( [input0,embed] )
 
-    # begin expanding data towards image generation
-    x = tf.keras.layers.Dense(7*7*256, use_bias=False)(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.LeakyReLU()(x)
+    x = tf.keras.layers.Dense( 5*5*256, use_bias=False, activation='selu')(x)
+    x = tf.keras.layers.Reshape((5, 5, 256))(x)
+    assert x.shape == (None, 5,5, 256)  # NOTE: None is the batch size
 
-    x = tf.keras.layers.Reshape((7, 7, 256))(x)
+    x = tf.keras.layers.Conv2DTranspose(128, 5, strides=1, padding='same', use_bias=False, activation='selu')(x)
+    assert x.shape == (None, 5,5, 128)
 
-    x = tf.keras.layers.Conv2DTranspose(128, (5, 5), strides=(1, 1), padding='same', use_bias=False)(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.LeakyReLU()(x)
+    x = tf.keras.layers.Conv2DTranspose(64, 3, strides=2, padding='same', use_bias=False, activation='selu')(x)
+    assert x.shape == (None, 10,10, 64)
+    x = tflt.crop_layer( 1,1,8,8 ) (x)
+    assert x.shape == (None, 8,8, 64)
 
-    x = tf.keras.layers.Conv2DTranspose(64, (5, 5), strides=(2, 2), padding='same', use_bias=False)(x)
-    assert x.shape == (None, 14, 14, 64)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.LeakyReLU()(x)
+    x = tf.keras.layers.Conv2DTranspose(32, 2, strides=2, padding='same', use_bias=False, activation='selu')(x)
+    assert x.shape == (None, 16,16, 32)
+    x = tflt.crop_layer( 1,1,14,14 ) (x)
+    assert x.shape == (None, 14,14, 32)
 
-    # cleanup
-    x = tf.keras.layers.Conv2DTranspose(1, (5, 5), strides=(2, 2), padding='same', use_bias=False, activation='tanh')(x)
-    output0 = x
+    output0 = x = tf.keras.layers.Conv2DTranspose(1, 2, strides=2, padding='same', use_bias=False, activation='tanh')(x)
+    assert x.shape == (None, 28,28, 1)
 
     return tf.keras.Model(inputs=(input0,input1), outputs=(output0,input1) )
+
 
 generator = make_generator_model()
 
@@ -209,15 +271,7 @@ num_examples_to_generate = 16
 
 # You will reuse this seed overtime (so it's easier)
 # to visualize progress in the animated GIF)
-save_image_noise = tf.random.normal( [num_examples_to_generate, NOISE_DIM], seed=sample_seed )
-save_image_digit = tf.random.uniform( (num_examples_to_generate,1), maxval=10, dtype=tf.int32, seed=sample_seed )
-
-save_image_digit = tf.reshape( [val % 10 for val in range(num_examples_to_generate) ], (16,1) )
-save_image_seed = (save_image_noise,save_image_digit)
-
-# print("save_image_seed=",save_image_seed)
-# print("noise.shape=",tf.shape(save_image_seed[0]))
-# print("digit.shape=",tf.shape(save_image_seed[1]))
+save_image_seed = tf.random.normal( [num_examples_to_generate, NOISE_DIM], seed=sample_seed )
 
 
 # Notice the use of `tf.function`.  This annotation causes the function to be compiled for GPU.
@@ -225,12 +279,14 @@ save_image_seed = (save_image_noise,save_image_digit)
 def train_step(images):
 
     noise = tf.random.normal( [BATCH_SIZE, NOISE_DIM] )
-    digit = tf.random.uniform( [BATCH_SIZE, 1], maxval=10, dtype=tf.int32 )
 
     with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-        generated_image_set = generator( (noise,digit), training=True)
+        # generated_digits ( eg. [1] ) comes back as float, but needs to be int
+        generated_image_set = generator( noise, training=True)
+        generated_image_set = ( generated_image_set[0], tf.cast(generated_image_set[1], tf.int32 ) )
 
         real_output = discriminator(images, training=True)
+
         fake_output = discriminator(generated_image_set, training=True)
 
         gen_loss = generator_loss(fake_output)
@@ -264,9 +320,6 @@ def train( dataset, steps ):
         ckpt_manager.save()
         print ('Time for epoch {} is {} sec'.format(latest_epoch, total_time))
 
-    # # Generate after the final epoch
-    # generate_and_save_images( generator, latest_epoch, save_image_seed )
-
     return
 
 
@@ -278,16 +331,17 @@ def generate_and_save_images( model, epoch, test_input ):
     outputs = model(test_input, training=False)
 
     (predictions,labels) = outputs
+    labels = tf.cast( labels, tf.int32 )
     # print("predictions=",predictions)
     # print("labels=",labels)
 
     plt.close()
     fig = plt.figure(figsize=(7, 7))
-    fig.suptitle('MnistDigits_withIdentity', fontsize=16)
+    fig.suptitle( 'MnistDigits_withClaim', fontsize=16)
 
     for i in range(predictions.shape[0]):
         ax = plt.subplot(4, 4, i+1)
-        name = "p="+DIGIT_NAME[ int(labels[i][0]) ]
+        name = "p="+DIGIT_NAME[ int(labels[i]) ]
         ax.set_title( name )
         plt.imshow(predictions[i, :, :, 0] * 127.5 + 127.5, cmap='gray')
         plt.axis('off')

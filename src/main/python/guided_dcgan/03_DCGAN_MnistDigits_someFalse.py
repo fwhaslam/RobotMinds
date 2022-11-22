@@ -1,43 +1,47 @@
 #
 #   This code is a modified version of:
-#       93_DCGAN_HandwrittenDigits.py
+#       01_DCGAN_MnistDigits_original.py
 #
 #   This code is identical to what is presented on the tutorial page except for:
-#       'pip install imageio'
-#       'pip install git+https://github.com/tensorflow/docs'
-#       Added SMALL_MACHINE so I could run on my laptop in a reasonable timeframe
-#       using plt.ion() with plt.pause(30) so training continues when I am away.
-#       using checkpoint_manager to restore both model and epoch_count ( eg. latest_epoch )
-#       images and training going to single subfolder
+#       Some percentage of the images are 'not-a-number'.
+#       This is achieved by transforming the image, and editing the label from True to False.
 #
 #   Code tested with:
-#       Tensorflow 2.10.0/cpuOnly  ( complains about Cudart64_110.dll, but it still functions )
 #
+import sys
+sys.path.append('..')
 
 import os
 import re
 import time
 import glob
+import random
 
 import tensorflow as tf
 import imageio.v2 as imageio
 import matplotlib.pyplot as plt
-from tensorflow.keras import layers
+
+from _utilities.tf_tensor_tools import *
 
 plt.ion()
 
+# false percent derived from command line
+FALSE_PERCENT = 10
+if len(sys.argv)>1:
+    FALSE_PERCENT = int( sys.argv[1] )
+
 # model and samples directory
-VERSION = 'v01'
-checkpoint_dir = f'./guided_dcgan_ckpt/{VERSION}'
-TRAIN_FOLDER = checkpoint_dir + "/train"
-IMAGE_FOLDER = checkpoint_dir + "/samples"
+VERSION = f'v03p{FALSE_PERCENT}'
+CHECKPOINT_DIR = f'./guided_dcgan_ckpt/{VERSION}'
+TRAIN_FOLDER = CHECKPOINT_DIR + "/train"
+IMAGE_FOLDER = CHECKPOINT_DIR + "/samples"
 ANIMATION_FILE = f'guided_dcgan_animation_{VERSION}.gif'
 
 # am I running this under via CPU on my laptop ( eg. small machine ) ?
 # SMALL_MACHINE = ( tf.test.is_gpu_available() == False )   # deprecated method
 GPU_LIST = tf.config.list_physical_devices('GPU')
 SMALL_MACHINE = ( len(GPU_LIST) == 0 )
-# TODO: check to see if nvidia cuda is intalled
+# TODO: check to see if nvidia cuda is installed
 #  import os / os.system( 'nvidia-smi' ) or  os.system( 'nvcc --Version )
 
 EPOCHS = 50
@@ -45,6 +49,7 @@ BUFFER_SIZE = 60_000
 BATCH_SIZE = 256
 NOISE_DIM = 100
 
+FALSE_RATE = tf.constant( FALSE_PERCENT / 100. )
 POPUP_WAIT_TIME = 1 #30
 
 if SMALL_MACHINE:
@@ -56,7 +61,92 @@ print("\n\nConfig:")
 print("EPOCHS=",EPOCHS)
 print("BUFFER_SIZE=",BUFFER_SIZE)
 print("BATCH_SIZE=",BATCH_SIZE)
+print("FALSE_PERCENT=",FALSE_PERCENT)
 print("\n\n")
+
+########################################################################################################################
+
+# transformations which can make the image 'not a number', depends on digit
+
+# stripe = create vertical black stripe(s) covering part of the image
+# flip horz = flip on the x axis
+# flip vert = flip on the y axis
+# rotate 90 = rotate 90 degrees clockwise
+# rotate 180 = rotate 180 degrees clockwise
+# rotate 270 = rotate 270 degrees clockwise
+
+TRANSFORM_DESCRIPTION = ['Stripe','flipHorz','flipVert','rotate+90','rotate+180','rotate+270']
+OPTION_COUNT = len(TRANSFORM_DESCRIPTION)
+
+DIGIT_TRANSFORMS = [
+    [ True, False, False, False, False, False],       # zero
+    [ True, False, False, True, False, True],         # one
+    [ True, False, False, True, False, True],         # two
+    [ True, True, False, True, True, True],           # three
+    [ True, True, True, True, True, True],            # four
+
+    [ True, False, False, True, False, True],         # five
+    [ True, True, True, True, False, True],           # six
+    [ True, True, True, True, True, True],            # seven
+    [ True, False, False, True, False, True],         # eight
+    [ True, True, True, True, False, True],           # nine
+]
+
+DIGIT_VALID_TRANSFORMS = [ [-1] * ( 1 + OPTION_COUNT ) for index in range(10) ]
+
+for digit in range(0,10):
+    index = 0
+    for action in range(0,OPTION_COUNT):
+        if DIGIT_TRANSFORMS[digit][action]:
+            index = index + 1
+            DIGIT_VALID_TRANSFORMS[digit][index] = action
+    DIGIT_VALID_TRANSFORMS[digit][0] = index
+
+DIGIT_VALID_TRANSFORMS = tf.constant( DIGIT_VALID_TRANSFORMS )
+# print('DIGIT_VALID_TRANSFORMS=',DIGIT_VALID_TRANSFORMS)
+
+
+BLACK_STRIPE = tf.concat( [tf.ones( (11,) ), tf.zeros( (6,) ), tf.ones( (11) )], axis=0 )
+# print('BLACK_STRIPE=',BLACK_STRIPE)
+
+@tf.function
+def add_stripes(image):
+    r"""Starts and ends with (28, 28, 1).  Multiply matrix by vector to set some columns to zero."""
+
+    work = tf.squeeze( image, axis=-1)
+    # tf.print('\n\nwork no stripe=',work,summarize=-1)
+    work = work * BLACK_STRIPE
+    # tf.print('work with stripe=',work,summarize=-1)
+    work = tf.expand_dims( work, axis=-1 )
+    # tf.print('work 2=',work,summarize=-1)
+
+    return work
+
+@tf.function
+def make_some_images_false( image, digit ):
+    r"""For some percentage of records,
+    apply a transform which makes the image a 'false' number."""
+
+    if tf.random.uniform( () ) >= FALSE_RATE:
+        return (image,True)
+
+    # tf.print('\ndigit=',digit)
+    options = DIGIT_VALID_TRANSFORMS[ digit ]
+    # tf.print('options=',options)
+    action  = options[ 1 + tf.random.uniform(  (), maxval=options[0], dtype=tf.int32 ) ]
+    # tf.print('action=',action)
+
+    tf.switch_case( action,{
+        0: ( lambda: add_stripes( image ) ),
+        1: ( lambda: tf.image.flip_left_right( image ) ),
+        2: ( lambda: tf.image.flip_up_down( image ) ),
+        3: ( lambda: tf.image.rot90( image ) ),
+        4: ( lambda: tf.image.rot90( image, k=2 ) ),
+        5: ( lambda: tf.image.rot90( image, k=3 ) )
+    } )
+
+    return (image,False)
+
 
 ########################################################################################################################
 
@@ -64,36 +154,47 @@ print("\n\n")
 (digit_images, digit_labels), (_, _) = tf.keras.datasets.mnist.load_data()
 
 train_images = digit_images.reshape(digit_images.shape[0], 28, 28, 1).astype('float32')
-train_images = (train_images - 127.5) / 127.5  # Normalize the images to [-1, 1]
 
+# train_images = (train_images - 127.5) / 127.5  # Normalize the images to [-1, 1]
+@tf.function
+def normalize_image( image, label ):
+    image = (image - 127.5) / 127.5
+    return image, label
+
+image_digit_set = ( train_images, digit_labels )
 
 # Batch and shuffle the data, reduce size if necessary ( eg. take() )
-train_dataset = tf.data.Dataset.\
-    from_tensor_slices(train_images).\
-    take(BUFFER_SIZE).\
+#       Digits are included for mapping, but become bools after mapping
+#       YES!  We shuffle twice, once before transform, once after.
+#       NOTE: normalize AFTER applying image falsify
+train_dataset = tf.data.Dataset.from_tensor_slices( image_digit_set ).\
+    take(BUFFER_SIZE). \
+    map( make_some_images_false ). \
+    map( normalize_image ).\
     shuffle(BUFFER_SIZE).\
     batch(BATCH_SIZE)
 
+
 def make_generator_model():
     model = tf.keras.Sequential()
-    model.add(layers.Dense(7*7*256, use_bias=False, input_shape=(NOISE_DIM,)))
-    model.add(layers.BatchNormalization())
-    model.add(layers.LeakyReLU())
+    model.add(tf.keras.layers.Dense(7*7*256, use_bias=False, input_shape=(NOISE_DIM,)))
+    model.add(tf.keras.layers.BatchNormalization())
+    model.add(tf.keras.layers.LeakyReLU())
 
-    model.add(layers.Reshape((7, 7, 256)))
+    model.add(tf.keras.layers.Reshape((7, 7, 256)))
     assert model.output_shape == (None, 7, 7, 256)  # Note: None is the batch size
 
-    model.add(layers.Conv2DTranspose(128, (5, 5), strides=(1, 1), padding='same', use_bias=False))
+    model.add(tf.keras.layers.Conv2DTranspose(128, (5, 5), strides=(1, 1), padding='same', use_bias=False))
     assert model.output_shape == (None, 7, 7, 128)
-    model.add(layers.BatchNormalization())
-    model.add(layers.LeakyReLU())
+    model.add(tf.keras.layers.BatchNormalization())
+    model.add(tf.keras.layers.LeakyReLU())
 
-    model.add(layers.Conv2DTranspose(64, (5, 5), strides=(2, 2), padding='same', use_bias=False))
+    model.add(tf.keras.layers.Conv2DTranspose(64, (5, 5), strides=(2, 2), padding='same', use_bias=False))
     assert model.output_shape == (None, 14, 14, 64)
-    model.add(layers.BatchNormalization())
-    model.add(layers.LeakyReLU())
+    model.add(tf.keras.layers.BatchNormalization())
+    model.add(tf.keras.layers.LeakyReLU())
 
-    model.add(layers.Conv2DTranspose(1, (5, 5), strides=(2, 2), padding='same', use_bias=False, activation='tanh'))
+    model.add(tf.keras.layers.Conv2DTranspose(1, (5, 5), strides=(2, 2), padding='same', use_bias=False, activation='tanh'))
     assert model.output_shape == (None, 28, 28, 1)
 
     return model
@@ -107,22 +208,22 @@ generated_image = generator(noise, training=False)
 
 def make_discriminator_model():
     model = tf.keras.Sequential()
-    model.add(layers.Conv2D(64, (5, 5), strides=(2, 2), padding='same',
+    model.add(tf.keras.layers.Conv2D(64, (5, 5), strides=(2, 2), padding='same',
                             input_shape=[28, 28, 1]))
-    model.add(layers.LeakyReLU())
-    model.add(layers.Dropout(0.3))
+    model.add(tf.keras.layers.LeakyReLU())
+    model.add(tf.keras.layers.Dropout(0.3))
 
-    model.add(layers.Conv2D(128, (5, 5), strides=(2, 2), padding='same'))
-    model.add(layers.LeakyReLU())
-    model.add(layers.Dropout(0.3))
+    model.add(tf.keras.layers.Conv2D(128, (5, 5), strides=(2, 2), padding='same'))
+    model.add(tf.keras.layers.LeakyReLU())
+    model.add(tf.keras.layers.Dropout(0.3))
 
-    model.add(layers.Flatten())
-    model.add(layers.Dense(1))
+    model.add(tf.keras.layers.Flatten())
+    model.add(tf.keras.layers.Dense(1))
 
     return model
 
-def discriminator_loss(real_output, fake_output):
-    real_loss = cross_entropy(tf.ones_like(real_output), real_output)
+def discriminator_loss(real_output, real_labels, fake_output):
+    real_loss = cross_entropy( real_labels, real_output)
     fake_loss = cross_entropy(tf.zeros_like(fake_output), fake_output)
     total_loss = real_loss + fake_loss
     return total_loss
@@ -168,6 +269,7 @@ if not os.path.exists(IMAGE_FOLDER):
 
 ########################################################################################################################
 
+
 sample_seed = 43271823
 num_examples_to_generate = 16
 
@@ -175,10 +277,17 @@ num_examples_to_generate = 16
 # to visualize progress in the animated GIF)
 save_image_seed = tf.random.normal( [num_examples_to_generate, NOISE_DIM], seed=sample_seed )
 
+discriminator.compile()
+generator.compile()
+
 # Notice the use of `tf.function`
 # This annotation causes the function to be "compiled".
 @tf.function
-def train_step(images):
+def train_step( train_dataset ):
+
+    ( images, labels ) = train_dataset
+    # TODO: add labels to training/fit
+
     noise = tf.random.normal([BATCH_SIZE, NOISE_DIM])
 
     with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
@@ -188,7 +297,7 @@ def train_step(images):
         fake_output = discriminator(generated_images, training=True)
 
         gen_loss = generator_loss(fake_output)
-        disc_loss = discriminator_loss(real_output, fake_output)
+        disc_loss = discriminator_loss(real_output, labels, fake_output)
 
     gradients_of_generator = gen_tape.gradient(gen_loss, generator.trainable_variables)
     gradients_of_discriminator = disc_tape.gradient(disc_loss, discriminator.trainable_variables)
@@ -233,14 +342,14 @@ def generate_and_save_images( model, epoch, test_input ):
 
     plt.close()
     fig = plt.figure(figsize=(7, 7))
-    fig.suptitle('MnistDigits_original', fontsize=16)
+    fig.suptitle( f'MnistDigits_someFalse({FALSE_PERCENT})', fontsize=16)
 
     for i in range(predictions.shape[0]):
         plt.subplot(4, 4, i+1)
         plt.imshow(predictions[i, :, :, 0] * 127.5 + 127.5, cmap='gray')
         plt.axis('off')
 
-    image_path = IMAGE_FOLDER+'/image_at_epoch_{:04d}.png'.format(epoch)
+    image_path = IMAGE_FOLDER + '/image_at_epoch_{:04d}.png'.format(epoch)
     plt.savefig(image_path)
 
     plt.show()

@@ -13,6 +13,8 @@
 #   Code tested with:
 #       Tensorflow 2.10.0/cpuOnly  ( complains about Cudart64_110.dll, but it still functions )
 #
+import sys
+sys.path.append("..")
 
 import os
 import re
@@ -22,12 +24,14 @@ import glob
 import tensorflow as tf
 import imageio.v2 as imageio
 import matplotlib.pyplot as plt
-from tensorflow.keras import layers
+
+import _utilities.tf_layer_tools as tflt
+import _utilities.tf_tensor_tools as tftt
 
 plt.ion()
 
 # model and samples directory
-VERSION = 'v01'
+VERSION = 'v11'
 checkpoint_dir = f'./guided_dcgan_ckpt/{VERSION}'
 TRAIN_FOLDER = checkpoint_dir + "/train"
 IMAGE_FOLDER = checkpoint_dir + "/samples"
@@ -75,28 +79,31 @@ train_dataset = tf.data.Dataset.\
     batch(BATCH_SIZE)
 
 def make_generator_model():
-    model = tf.keras.Sequential()
-    model.add(layers.Dense(7*7*256, use_bias=False, input_shape=(NOISE_DIM,)))
-    model.add(layers.BatchNormalization())
-    model.add(layers.LeakyReLU())
 
-    model.add(layers.Reshape((7, 7, 256)))
-    assert model.output_shape == (None, 7, 7, 256)  # Note: None is the batch size
+    inputs = x = tf.keras.layers.Input(shape=[NOISE_DIM,])
 
-    model.add(layers.Conv2DTranspose(128, (5, 5), strides=(1, 1), padding='same', use_bias=False))
-    assert model.output_shape == (None, 7, 7, 128)
-    model.add(layers.BatchNormalization())
-    model.add(layers.LeakyReLU())
+    x = tf.keras.layers.Dense( 5*5*256, use_bias=False, activation='selu')(x)
+    x = tf.keras.layers.Reshape((5, 5, 256))(x)
+    assert x.shape == (None, 5,5, 256)  # NOTE: None is the batch size
 
-    model.add(layers.Conv2DTranspose(64, (5, 5), strides=(2, 2), padding='same', use_bias=False))
-    assert model.output_shape == (None, 14, 14, 64)
-    model.add(layers.BatchNormalization())
-    model.add(layers.LeakyReLU())
+    x = tf.keras.layers.Conv2DTranspose(128, 5, strides=1, padding='same', use_bias=False, activation='selu')(x)
+    assert x.shape == (None, 5,5, 128)
 
-    model.add(layers.Conv2DTranspose(1, (5, 5), strides=(2, 2), padding='same', use_bias=False, activation='tanh'))
-    assert model.output_shape == (None, 28, 28, 1)
+    x = tf.keras.layers.Conv2DTranspose(64, 3, strides=2, padding='same', use_bias=False, activation='selu')(x)
+    assert x.shape == (None, 10,10, 64)
+    x = tflt.crop_layer( 1,1,8,8 ) (x)
+    assert x.shape == (None, 8,8, 64)
 
-    return model
+    x = tf.keras.layers.Conv2DTranspose(32, 2, strides=2, padding='same', use_bias=False, activation='selu')(x)
+    assert x.shape == (None, 16,16, 32)
+    x = tflt.crop_layer( 1,1,14,14 ) (x)
+    assert x.shape == (None, 14,14, 32)
+
+    outputs = x = tf.keras.layers.Conv2DTranspose(1, 2, strides=2, padding='same', use_bias=False, activation='tanh')(x)
+    assert x.shape == (None, 28,28, 1)
+
+    return tf.keras.Model(inputs=inputs, outputs=outputs )
+
 
 generator = make_generator_model()
 
@@ -106,20 +113,31 @@ generated_image = generator(noise, training=False)
 ########################################################################################################################
 
 def make_discriminator_model():
-    model = tf.keras.Sequential()
-    model.add(layers.Conv2D(64, (5, 5), strides=(2, 2), padding='same',
-                            input_shape=[28, 28, 1]))
-    model.add(layers.LeakyReLU())
-    model.add(layers.Dropout(0.3))
 
-    model.add(layers.Conv2D(128, (5, 5), strides=(2, 2), padding='same'))
-    model.add(layers.LeakyReLU())
-    model.add(layers.Dropout(0.3))
+    inputs = x = tf.keras.layers.Input(shape=[28,28,1])
+    assert x.shape == (None, 28, 28, 1)
 
-    model.add(layers.Flatten())
-    model.add(layers.Dense(1))
+    x = tf.keras.layers.Conv2D(32, 5, strides=2, padding='same', activation='selu')(x)
+    x = tf.keras.layers.Dropout(0.1)(x)
+    assert x.shape == (None, 14, 14, 32)
 
-    return model
+    x = tf.keras.layers.Conv2D(64, 3, strides=2, padding='same', activation='selu')(x)
+    x = tf.keras.layers.Dropout(0.1)(x)
+    assert x.shape == (None, 7, 7, 64)
+
+    x = tf.keras.layers.Conv2D(128, 2, strides=2, padding='same', activation='selu')(x)
+    x = tf.keras.layers.Dropout(0.1)(x)
+    assert x.shape == (None, 4,4, 128)
+
+    x = tf.keras.layers.Conv2D(256, 2, strides=2, padding='same', activation='selu')(x)
+    x = tf.keras.layers.Dropout(0.1)(x)
+    assert x.shape == (None, 2,2, 256)
+
+    x = tf.keras.layers.Flatten()(x)
+    outputs = x = tf.keras.layers.Dense(1)(x)
+
+    return tf.keras.Model(inputs=inputs, outputs=outputs )
+
 
 def discriminator_loss(real_output, fake_output):
     real_loss = cross_entropy(tf.ones_like(real_output), real_output)
@@ -233,7 +251,7 @@ def generate_and_save_images( model, epoch, test_input ):
 
     plt.close()
     fig = plt.figure(figsize=(7, 7))
-    fig.suptitle('MnistDigits_original', fontsize=16)
+    fig.suptitle( 'MnistDigits_tighterLayers', fontsize=16)
 
     for i in range(predictions.shape[0]):
         plt.subplot(4, 4, i+1)
@@ -247,6 +265,7 @@ def generate_and_save_images( model, epoch, test_input ):
     plt.pause(POPUP_WAIT_TIME)
     return
 
+# lets get'er done!
 train( train_dataset, EPOCHS )
 
 ########################################################################################################################

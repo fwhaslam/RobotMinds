@@ -13,6 +13,8 @@
 #   Code tested with:
 #       Tensorflow 2.10.0/cpuOnly  ( complains about Cudart64_110.dll, but it still functions )
 #
+import sys
+sys.path.append('..')
 
 import os
 import re
@@ -22,15 +24,17 @@ import glob
 import tensorflow as tf
 import imageio.v2 as imageio
 import matplotlib.pyplot as plt
-from tensorflow.keras import layers
+
+import _utilities.tf_layer_tools as tflt
+import _utilities.tf_tensor_tools as tftt
 
 plt.ion()
 
 # model and samples directory
-VERSION = 'v01'
-checkpoint_dir = f'./guided_dcgan_ckpt/{VERSION}'
-TRAIN_FOLDER = checkpoint_dir + "/train"
-IMAGE_FOLDER = checkpoint_dir + "/samples"
+VERSION = 'v12'
+CHECKPOINT_DIR = f'./guided_dcgan_ckpt/{VERSION}'
+TRAIN_FOLDER = CHECKPOINT_DIR + "/train"
+IMAGE_FOLDER = CHECKPOINT_DIR + "/samples"
 ANIMATION_FILE = f'guided_dcgan_animation_{VERSION}.gif'
 
 # am I running this under via CPU on my laptop ( eg. small machine ) ?
@@ -58,6 +62,8 @@ print("BUFFER_SIZE=",BUFFER_SIZE)
 print("BATCH_SIZE=",BATCH_SIZE)
 print("\n\n")
 
+DIGIT_NAME = ["Zero","One","Two","Three","Four","Five","Six","Seven","Eight","Nine"]
+
 ########################################################################################################################
 
 # load MNIST handwritten digits dataset
@@ -66,60 +72,116 @@ print("\n\n")
 train_images = digit_images.reshape(digit_images.shape[0], 28, 28, 1).astype('float32')
 train_images = (train_images - 127.5) / 127.5  # Normalize the images to [-1, 1]
 
-
 # Batch and shuffle the data, reduce size if necessary ( eg. take() )
 train_dataset = tf.data.Dataset.\
-    from_tensor_slices(train_images).\
+    from_tensor_slices( (train_images,digit_labels) ).\
     take(BUFFER_SIZE).\
     shuffle(BUFFER_SIZE).\
     batch(BATCH_SIZE)
 
+# tf.print('dataset=',train_dataset)      # shows two tensorspecs, so both images + labels are in here
+
 def make_generator_model():
-    model = tf.keras.Sequential()
-    model.add(layers.Dense(7*7*256, use_bias=False, input_shape=(NOISE_DIM,)))
-    model.add(layers.BatchNormalization())
-    model.add(layers.LeakyReLU())
+    r"""Generator will have two inputs ( noise, digit ), and two outputs ( image, digit ).
+    The 'digit' is a value from zero to nine indicating what the image should look like.
+    The output 'digit' will be the same as the input 'digit'.
+    """
 
-    model.add(layers.Reshape((7, 7, 256)))
-    assert model.output_shape == (None, 7, 7, 256)  # Note: None is the batch size
+    input0 = tf.keras.layers.Input(shape=[NOISE_DIM,])
+    input1 = tf.keras.layers.Input(shape=[1])
 
-    model.add(layers.Conv2DTranspose(128, (5, 5), strides=(1, 1), padding='same', use_bias=False))
-    assert model.output_shape == (None, 7, 7, 128)
-    model.add(layers.BatchNormalization())
-    model.add(layers.LeakyReLU())
+    # appending digit 3 weight embedding to the noise 100 weights
+    embed = tf.keras.layers.Embedding( 10, 3 )(input1)  # [0-9] digit embeds as 3-dim dense key ( bs, 1,3 )
+    embed = tf.keras.layers.Flatten()(embed)
+    x = tf.keras.layers.Concatenate()( [input0,embed] )
 
-    model.add(layers.Conv2DTranspose(64, (5, 5), strides=(2, 2), padding='same', use_bias=False))
-    assert model.output_shape == (None, 14, 14, 64)
-    model.add(layers.BatchNormalization())
-    model.add(layers.LeakyReLU())
+    x = tf.keras.layers.Dense( 5*5*256, use_bias=False, activation='selu')(x)
+    x = tf.keras.layers.Reshape((5, 5, 256))(x)
+    assert x.shape == (None, 5,5, 256)  # NOTE: None is the batch size
 
-    model.add(layers.Conv2DTranspose(1, (5, 5), strides=(2, 2), padding='same', use_bias=False, activation='tanh'))
-    assert model.output_shape == (None, 28, 28, 1)
+    x = tf.keras.layers.Conv2DTranspose(128, 5, strides=1, padding='same', use_bias=False, activation='selu')(x)
+    assert x.shape == (None, 5,5, 128)
 
-    return model
+    x = tf.keras.layers.Conv2DTranspose(64, 3, strides=2, padding='same', use_bias=False, activation='selu')(x)
+    assert x.shape == (None, 10,10, 64)
+    x = tflt.crop_layer( 1,1,8,8 ) (x)
+    assert x.shape == (None, 8,8, 64)
+
+    x = tf.keras.layers.Conv2DTranspose(32, 2, strides=2, padding='same', use_bias=False, activation='selu')(x)
+    assert x.shape == (None, 16,16, 32)
+    x = tflt.crop_layer( 1,1,14,14 ) (x)
+    assert x.shape == (None, 14,14, 32)
+
+    output0 = x = tf.keras.layers.Conv2DTranspose(1, 2, strides=2, padding='same', use_bias=False, activation='tanh')(x)
+    assert x.shape == (None, 28,28, 1)
+
+    return tf.keras.Model(inputs=(input0,input1), outputs=(output0,input1) )
 
 generator = make_generator_model()
 
-noise = tf.random.normal([1, NOISE_DIM])
-generated_image = generator(noise, training=False)
+# noise = tf.random.normal([1, NOISE_DIM])
+# digit = tf.random.uniform( (1,), maxval=10, dtype=tf.int32 )
+# generated_image = generator( (noise,digit), training=False)
 
 ########################################################################################################################
 
 def make_discriminator_model():
-    model = tf.keras.Sequential()
-    model.add(layers.Conv2D(64, (5, 5), strides=(2, 2), padding='same',
-                            input_shape=[28, 28, 1]))
-    model.add(layers.LeakyReLU())
-    model.add(layers.Dropout(0.3))
+    r"""Discriminator will have two inputs ( image, digit ).
+    Digit is the label from the dataset saying what the image should look like ( zero to nine ).
+    Output is still binary cross entropy value.
+    """
 
-    model.add(layers.Conv2D(128, (5, 5), strides=(2, 2), padding='same'))
-    model.add(layers.LeakyReLU())
-    model.add(layers.Dropout(0.3))
+    input0 = tf.keras.layers.Input(shape=[28,28,1])
+    input1 = tf.keras.layers.Input(shape=[1])
 
-    model.add(layers.Flatten())
-    model.add(layers.Dense(1))
+    # merge embedded digit with image
+    embed = tf.keras.layers.Embedding( 10, 3, input_length=1 )(input1)  # [0-9] digit embeds as 3 dimensional dense key
+    embed = tf.keras.layers.Flatten()(embed)
+    x = tf.keras.layers.Dense( 28*28 )( embed )
+    x = tf.keras.layers.Reshape( (28,28,1) )( x )
+    x = tf.keras.layers.Concatenate( axis=-1)( [input0,x] )
 
-    return model
+    # begin convolutional analysis
+    x = tf.keras.layers.Conv2D(64, (5, 5), strides=(2, 2), padding='same')(x)
+    x = tf.keras.layers.LeakyReLU()(x)
+    x = tf.keras.layers.Dropout(0.3)(x)
+
+    x = tf.keras.layers.Conv2D(128, (5, 5), strides=(2, 2), padding='same')(x)
+    x = tf.keras.layers.LeakyReLU()(x)
+    x = tf.keras.layers.Dropout(0.3)(x)
+
+    x = tf.keras.layers.Flatten()(x)
+    x = tf.keras.layers.Dense(1)(x)
+
+    outputs = x
+
+    return tf.keras.Model(inputs=(input0,input1), outputs=outputs )
+
+
+    inputs = x = tf.keras.layers.Input(shape=[28,28,1])
+    assert x.shape == (None, 28, 28, 1)
+
+    x = tf.keras.layers.Conv2D(32, 5, strides=2, padding='same', activation='selu')(x)
+    x = tf.keras.layers.Dropout(0.1)(x)
+    assert x.shape == (None, 14, 14, 32)
+
+    x = tf.keras.layers.Conv2D(64, 3, strides=2, padding='same', activation='selu')(x)
+    x = tf.keras.layers.Dropout(0.1)(x)
+    assert x.shape == (None, 7, 7, 64)
+
+    x = tf.keras.layers.Conv2D(128, 2, strides=2, padding='same', activation='selu')(x)
+    x = tf.keras.layers.Dropout(0.1)(x)
+    assert x.shape == (None, 4,4, 128)
+
+    x = tf.keras.layers.Conv2D(256, 2, strides=2, padding='same', activation='selu')(x)
+    x = tf.keras.layers.Dropout(0.1)(x)
+    assert x.shape == (None, 2,2, 256)
+
+    x = tf.keras.layers.Flatten()(x)
+    outputs = x = tf.keras.layers.Dense(1)(x)
+
+    return tf.keras.Model(inputs=inputs, outputs=outputs )
+
 
 def discriminator_loss(real_output, fake_output):
     real_loss = cross_entropy(tf.ones_like(real_output), real_output)
@@ -173,19 +235,29 @@ num_examples_to_generate = 16
 
 # You will reuse this seed overtime (so it's easier)
 # to visualize progress in the animated GIF)
-save_image_seed = tf.random.normal( [num_examples_to_generate, NOISE_DIM], seed=sample_seed )
+save_image_noise = tf.random.normal( [num_examples_to_generate, NOISE_DIM], seed=sample_seed )
+save_image_digit = tf.random.uniform( (num_examples_to_generate,1), maxval=10, dtype=tf.int32, seed=sample_seed )
 
-# Notice the use of `tf.function`
-# This annotation causes the function to be "compiled".
+save_image_digit = tf.reshape( [val % 10 for val in range(num_examples_to_generate) ], (16,1) )
+save_image_seed = (save_image_noise,save_image_digit)
+
+# print("save_image_seed=",save_image_seed)
+# print("noise.shape=",tf.shape(save_image_seed[0]))
+# print("digit.shape=",tf.shape(save_image_seed[1]))
+
+
+# Notice the use of `tf.function`.  This annotation causes the function to be compiled for GPU.
 @tf.function
 def train_step(images):
-    noise = tf.random.normal([BATCH_SIZE, NOISE_DIM])
+
+    noise = tf.random.normal( [BATCH_SIZE, NOISE_DIM] )
+    digit = tf.random.uniform( [BATCH_SIZE, 1], maxval=10, dtype=tf.int32 )
 
     with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-        generated_images = generator(noise, training=True)
+        generated_image_set = generator( (noise,digit), training=True)
 
         real_output = discriminator(images, training=True)
-        fake_output = discriminator(generated_images, training=True)
+        fake_output = discriminator(generated_image_set, training=True)
 
         gen_loss = generator_loss(fake_output)
         disc_loss = discriminator_loss(real_output, fake_output)
@@ -206,6 +278,8 @@ def train( dataset, steps ):
         start = time.time()
 
         for image_batch in dataset:
+            # tf.print('image_batch[0].shape=',tf.shape(image_batch[0]))
+            # tf.print('image_batch[1].shape=',tf.shape(image_batch[1]))
             train_step(image_batch)
 
         total_time = time.time()-start
@@ -217,7 +291,7 @@ def train( dataset, steps ):
         print ('Time for epoch {} is {} sec'.format(latest_epoch, total_time))
 
     # # Generate after the final epoch
-    # generate_and_save_images( generator, latest_epoch, seed )
+    # generate_and_save_images( generator, latest_epoch, save_image_seed )
 
     return
 
@@ -226,17 +300,21 @@ def generate_and_save_images( model, epoch, test_input ):
     # Notice `training` is set to False.
     # This is so all layers run in inference mode (batchnorm).
 
-    # display.clear_output(wait=True)
-
     global IMAGE_FOLDER
-    predictions = model(test_input, training=False)
+    outputs = model(test_input, training=False)
+
+    (predictions,labels) = outputs
+    # print("predictions=",predictions)
+    # print("labels=",labels)
 
     plt.close()
     fig = plt.figure(figsize=(7, 7))
-    fig.suptitle('MnistDigits_original', fontsize=16)
+    fig.suptitle('MnistDigits_tighter_withIdentity', fontsize=16)
 
     for i in range(predictions.shape[0]):
-        plt.subplot(4, 4, i+1)
+        ax = plt.subplot(4, 4, i+1)
+        name = "p="+DIGIT_NAME[ int(labels[i][0]) ]
+        ax.set_title( name )
         plt.imshow(predictions[i, :, :, 0] * 127.5 + 127.5, cmap='gray')
         plt.axis('off')
 
@@ -247,6 +325,7 @@ def generate_and_save_images( model, epoch, test_input ):
     plt.pause(POPUP_WAIT_TIME)
     return
 
+# train the model for some number of epochs
 train( train_dataset, EPOCHS )
 
 ########################################################################################################################
