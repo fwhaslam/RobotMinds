@@ -20,7 +20,7 @@ def supersoftmax( alpha:tf.Tensor, beta=64. ):
 
     betalpha = beta * alpha
     # tf.print('betalpha=',betalpha)
-    # extreme exponentiation creates numbers close to zero or one ( ~one for biggest entry)
+    # extreme exponentiation creates numbers close to zero or one ( ~one for biggest entry )
     return tf.nn.softmax( betalpha )
 
 @tf.function
