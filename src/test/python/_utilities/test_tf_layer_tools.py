@@ -38,13 +38,15 @@ class test_tf_layer_tools(unittest.TestCase):
 
 
 
-    def test__cross_shift(self):
+    def test__CrossShift(self):
 
         # shape = ( 1,  2,2,  3 )
         input = tf.cast( tf.constant( [ [[[1,1,1],[2,2,2]],[[3,3,3],[4,4,4]]]] ), tf.float32 )
 
+        layer = tflt.CrossShift()
+
         # #invocation
-        result = tflt.cross_shift( input )
+        result = layer( input )
         print('result=',result)
 
         # # assertions
