@@ -32,6 +32,8 @@ if len(sys.argv)>1:
 
 # model and samples directory
 VERSION = f'v03p{FALSE_PERCENT}'
+SCRIPT_TITLE = f'MnistDigits_someFalse/{VERSION}'
+
 CHECKPOINT_DIR = f'./guided_dcgan_ckpt/{VERSION}'
 TRAIN_FOLDER = CHECKPOINT_DIR + "/train"
 IMAGE_FOLDER = CHECKPOINT_DIR + "/samples"
@@ -342,7 +344,7 @@ def generate_and_save_images( model, epoch, test_input ):
 
     plt.close()
     fig = plt.figure(figsize=(7, 7))
-    fig.suptitle( f'MnistDigits_someFalse({FALSE_PERCENT})', fontsize=16)
+    fig.suptitle( SCRIPT_TITLE, fontsize=16)
 
     for i in range(predictions.shape[0]):
         plt.subplot(4, 4, i+1)

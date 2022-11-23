@@ -32,9 +32,11 @@ plt.ion()
 
 # model and samples directory
 VERSION = 'v11'
-checkpoint_dir = f'./guided_dcgan_ckpt/{VERSION}'
-TRAIN_FOLDER = checkpoint_dir + "/train"
-IMAGE_FOLDER = checkpoint_dir + "/samples"
+SCRIPT_TITLE = f'MnistDigits_tighterLayers/{VERSION}'
+
+CHECKPOINT_DIR = f'./guided_dcgan_ckpt/{VERSION}'
+TRAIN_FOLDER = CHECKPOINT_DIR + "/train"
+IMAGE_FOLDER = CHECKPOINT_DIR + "/samples"
 ANIMATION_FILE = f'guided_dcgan_animation_{VERSION}.gif'
 
 # am I running this under via CPU on my laptop ( eg. small machine ) ?
@@ -251,7 +253,7 @@ def generate_and_save_images( model, epoch, test_input ):
 
     plt.close()
     fig = plt.figure(figsize=(7, 7))
-    fig.suptitle( 'MnistDigits_tighterLayers', fontsize=16)
+    fig.suptitle( SCRIPT_TITLE, fontsize=16)
 
     for i in range(predictions.shape[0]):
         plt.subplot(4, 4, i+1)
