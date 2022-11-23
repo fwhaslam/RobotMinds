@@ -12,7 +12,7 @@
 #       showing final plots
 #
 #   Code tested with:
-#       Tensorflow 2.9.l / Cuda 11.7 / CudaNN 8.4 / VC_Redist 2019+
+#       Tensorflow 2.9.1 / Cuda 11.7 / CudaNN 8.4 / VC_Redist 2019+
 #
 import numpy as np # linear algebra
 import os

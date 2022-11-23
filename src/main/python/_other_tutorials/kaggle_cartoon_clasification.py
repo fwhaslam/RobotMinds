@@ -13,7 +13,7 @@
 #       Model was altered around layer -6 to fix a shape error
 #
 #   Code tested with:
-#       Tensorflow 2.9.l / Cuda 11.7 / CudaNN 8.4 / VC_Redist 2019+
+#       Tensorflow 2.9.1 / Cuda 11.7 / CudaNN 8.4 / VC_Redist 2019+
 #
 
 import os
