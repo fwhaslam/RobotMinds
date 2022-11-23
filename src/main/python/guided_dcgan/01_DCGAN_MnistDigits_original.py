@@ -12,6 +12,7 @@
 #
 #   Code tested with:
 #       Tensorflow 2.10.0/cpuOnly  ( complains about Cudart64_110.dll, but it still functions )
+#       Tensorflow 2.9.2 / Cuda 11.7 / CudaNN 8.4 / VC_Redist 2019+
 #
 
 import os
