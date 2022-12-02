@@ -10,10 +10,15 @@
 #       Only keeping new values if performance improves.
 #       CartPole will 'truncate' the game at 500 steps ( default setting )
 #
+#       WOW!  Adding basis to the observation dramatically improved results.
+#           It will almost always improve to score of 100 minimum,
+#           and often hits score of 500 minimum.
+#       This also demonstrates that q-learning is not ideal for cartpole problem.
+#
 #   This code is exactly per the source page except:
 #       Removed q-learning and tf.Models
 #       Using random model + jiggle
-#       only keeping improved model if it's minimum improves after 10 tries
+#       only keeping improved model if it's minimum improves after a number of tries
 #
 
 import numpy as np
@@ -22,14 +27,21 @@ import random
 
 LIMIT_TRIES_WITHOUT_IMPROVEMENT = 250
 STATS_REPLAY = 10
-MODEL_SIZE = 4
+MODEL_SHAPE = (5,)
+SCORE_LIMIT = 500       # this is a 'gym' limitation
 
 def jiggle( drift ):
-    # model weights in range -1 to 1 times 'drift'
-    return np.array( [ random.uniform( -1, 1 ) for i in range(MODEL_SIZE) ] ) * drift
+    weights = np.zeros( MODEL_SHAPE )
+    rfunc = np.vectorize( lambda x: random.uniform(-1,+1) )
+    weights = rfunc( weights )
+    return weights * drift
 
+def pick_action( env, observation, model ):
+    r"""Observation is ndarray[4]."""
 
-def pick_action( env, weight ):
+    # append a basis to the observation
+    state = np.append( observation, 1. )
+    weight = np.sum( state * model )
 
     # print("env.action_space=",env.action_space)
     actions_count = env.action_space.n - env.action_space.start
@@ -99,8 +111,7 @@ if __name__ == '__main__':
 
                 time_step += 1
 
-                action_weight = np.sum( observation * model )
-                action = pick_action( env, action_weight )
+                action = pick_action( env, observation, model )
                 # print('action=',action,' ts=',time_step)
 
                 # invoke the game environment
@@ -125,10 +136,13 @@ if __name__ == '__main__':
             model_count += 1
             no_change = 0
             print('IMPROVING best=',best_score)
-            print('best_model=',best_model)
+            # print('best_model=',best_model)
         else:
             no_change += 1
             # print('no_change=',no_change)
+
+        if best_score>=SCORE_LIMIT:
+            break
 
         # new model to test
         drift = 1. if best_score<10 else 10./best_score
