@@ -47,7 +47,7 @@ class QNetwork(tf.keras.Model):
         return x
 
     def predict(self, inputs):
-        r"""Takes 'observation' inputs, produces integral logits for action space.
+        r"""Takes 'state' as inputs, produces integral logits for action space.
         This is used to take an action at each step."""
         q_values = self(inputs)
         # print('q_values=',q_values)
@@ -71,8 +71,7 @@ if __name__ == '__main__':
     for episode_id in range(num_episodes):
 
         # state = env.reset()     # older version
-        observation, info = env.reset()     # v0.26.2
-        state = observation        # convert to older values
+        state, info = env.reset()     # v0.26.2
 
         epsilon = max(
             initial_epsilon * (num_exploration_episodes - episode_id) / num_exploration_episodes,
@@ -87,11 +86,10 @@ if __name__ == '__main__':
 
             # invoke the game environment
             # next_state, reward, done, info = env.step(action)   # older version
-            observation, reward, terminated, truncated, info = env.step(action)     # v0.26.2
+            next_state, reward, terminated, truncated, info = env.step(action)     # v0.26.2
             if terminated or truncated:
-                observation, info = env.reset()
-            done = terminated or truncated          # conversion to older values: done, next_state
-            next_state = observation
+                next_state, info = env.reset()
+            done = terminated or truncated
 
             # Game Over.
             reward = -10. if done else reward
