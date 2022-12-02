@@ -146,7 +146,7 @@ FIRST = tf.constant( [1,0] )
 SECOND = tf.constant( [0,1] )
 
 def predict( model, inputs ):
-    r"""Takes 'observation' inputs, produces integral logits for action space.
+    r"""Takes 'state' as inputs, produces integral logits for action space.
     This is used to take an action at each step."""
     q_values = model(inputs)
     # debatch = remove one dimension
@@ -185,7 +185,7 @@ def train_model( model, replay_buffer ):
 
 ########################################################################################################################
 #
-#   Note: observation space for CartPole-v1 is an array of 4 floating point numbers
+#   Note: observation space ( eg. state ) for CartPole-v1 is an array of 4 floating point numbers
 #   See: https://github.com/openai/gym/blob/master/gym/envs/classic_control/cartpole.py#L40
 #
 if __name__ == '__main__':
@@ -207,8 +207,7 @@ if __name__ == '__main__':
     for episode_id in range(num_episodes):
 
         # state = env.reset()     # older version
-        observation, info = env.reset()     # v0.26.2
-        state = observation        # convert to older values
+        state, info = env.reset()     # v0.26.2
 
         epsilon = max(
             initial_epsilon * (num_exploration_episodes - episode_id) / num_exploration_episodes,
@@ -224,14 +223,13 @@ if __name__ == '__main__':
 
             # invoke the game environment
             # next_state, reward, done, info = env.step(action)   # older version
-            observation, reward, terminated, truncated, info = env.step(action)     # v0.26.2
+            next_state, reward, terminated, truncated, info = env.step(action)     # v0.26.2
             reward = reward_function[VERSION]( time_step, reward )
 
             if terminated or truncated:
-                observation, info = env.reset()
+                next_state, info = env.reset()
                 scores[ episode_id ] = time_step
             done = terminated or truncated          # conversion to older values: done, next_state
-            next_state = observation
 
             # Game Over?
             reward = -10. if done else reward
