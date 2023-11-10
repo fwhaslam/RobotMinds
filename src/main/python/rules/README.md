@@ -10,3 +10,7 @@ technique?  I have no idea.  So far so good.
 Step One / v1: land and sea = generate a map similar to old school strategy maps, 
     with just two types of terrain.  The rules specify the ratios I want to see,
     and the amount of 'surface' (eg. coastline )
+
+v2: side step, simplifying to a single 'land ratio' value, 
+    and a random grid for input.  The goal is to make sure 
+    that the ratio of produced land vs sea matches the ratio.
