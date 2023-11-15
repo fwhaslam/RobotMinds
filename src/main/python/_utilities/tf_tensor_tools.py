@@ -1,8 +1,10 @@
 import tensorflow as tf
+print("TensorFlow version:", tf.__version__ )
 
-from tensorflow.python.ops.numpy_ops import np_config
+# from tensorflow.python.ops.numpy_ops import np_config
+# tf.python.ops.numpy_ops.enable_numpy_behavior()
 
-np_config.enable_numpy_behavior()
+tf.experimental.numpy.experimental_enable_numpy_behavior()
 
 def tensor_to_value( some_tensor:tf.Tensor ):
     r"""Extract tensor value.  This will return the value of the tensor in the same shape as the tensor."""

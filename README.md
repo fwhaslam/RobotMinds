@@ -28,8 +28,13 @@ For the GPU rendering I needed to install:
 
 ## History ( latest first )
 
+2023/11/10 = updated fred-laptop to TF 2.12.0 ( from 2.9.0 )
+
+2023/11/05 = Finally figured out issue with imports, apparently importing tf subcomponents is NOT SUPPORTED.
+    instead only use 'import tensorflow as tf' and everything else references as 'tf.component'
+
 2022/10/01 = Extracted layer tools, added 'softargmax()' algorithm.
-        Cyclegan framework saves image samples every 50 epochs, and restores from latest checkpoint.
+    Cyclegan framework saves image samples every 50 epochs, and restores from latest checkpoint.
 
 2022/09/26 = Added framework for cyclegans to simplify future development and testing
         Added first draft on 'rules-based' training.
