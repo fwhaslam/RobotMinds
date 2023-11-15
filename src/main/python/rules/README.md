@@ -17,11 +17,11 @@ eg.  sea to peak should be zero, land to deep should be zero, etc.
 Dropping some of the less successful models.
 Templates will be constructed based on color similarity between image and ONE_HOT_COLORS
 
-v2: side step, simplifying to a single 'land ratio' value, 
+v3: side step, simplifying to a single 'land ratio' value, 
     and a random grid for input.  The goal is to make sure 
     that the ratio of produced land vs sea matches the ratio.
 
-v3: use feature 'ratio', and training set of sequential neurons 
+v4: use feature 'ratio', and training set of sequential neurons 
     activated by ratio. ( eg.  ratio 0.5 = first 50 active, second 50 inactive )
     Try first with on/off activation.  Try again with softmax.
     See if either is trainable, and/or form affects function.
@@ -38,7 +38,7 @@ try these things:
 1) merge all lower layers together at each step [None]
 1) feature range = -0.5 to 0.5 [None] ( weird, still failing to 'fill' towards end of range ...)
 
-Somethign strange here, feature is BOTH [0,1] and [1,0] paired.
+Something strange here, feature is BOTH [0,1] and [1,0] paired.
 So we would expect both ends of the result to have equal results,
 BUT one end is consistently not changing.
     Committing so i can try on another system.
