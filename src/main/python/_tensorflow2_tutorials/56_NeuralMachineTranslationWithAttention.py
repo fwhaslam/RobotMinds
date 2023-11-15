@@ -6,7 +6,8 @@
 #
 #   This code is identical to what is presented on the tutorial page except for:
 #       header comments
-#       removed ipython syntax
+#       removed ipython syntax for %%time
+#       plt.show() and print() statements added for what were code exits from the tutorial
 #       comments and print statements to clarify what is being displayed
 #
 #   Code tested with:
@@ -28,6 +29,17 @@ import tensorflow_text as tf_text
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
+
+# ####################
+# # Display Big
+# import sys
+# sys.path.append('..')
+# import _utilities.tf_tensor_tools as teto
+# np.set_printoptions(threshold=sys.maxsize)
+# reloaded = tf.saved_model.load('translator_with_attention_ckpt')
+# print('\nreloaded=',teto.tensor_to_value(reloaded.encoder.embedding.embeddings))
+# if True: exit()
+# ####################
 
 class ShapeChecker():
     def __init__(self):
@@ -217,6 +229,9 @@ plt.subplot(1, 2, 2)
 plt.pcolormesh(example_tokens != 0)
 plt.title('Mask')
 
+print("\nDISPLAYED: plot of token ids and mask")
+plt.show()
+
 # Text(0.5, 1.0, 'Mask')
 
 
@@ -268,6 +283,7 @@ encoder = Encoder(input_text_processor.vocabulary_size(),
                   embedding_dim, units)
 example_enc_output, example_enc_state = encoder(example_tokens)
 
+print("\nDISPLAYED: data shapes for various layers")
 print(f'Input batch, shape (batch): {example_input_batch.shape}')
 print(f'Input batch tokens, shape (batch, s): {example_tokens.shape}')
 print(f'Encoder output, shape (batch, s, units): {example_enc_output.shape}')
@@ -319,6 +335,7 @@ class BahdanauAttention(tf.keras.layers.Layer):
 attention_layer = BahdanauAttention(units)
 
 
+print("DISPLAYED: shape of mask?")
 print( (example_tokens != 0).shape )
 
 # TensorShape([64, 24])
@@ -333,6 +350,7 @@ context_vector, attention_weights = attention_layer(
     value=example_enc_output,
     mask=(example_tokens != 0))
 
+print("DISPLAYED: shape of context vector ( = result ) and attention")
 print(f'Attention result shape: (batch_size, query_seq_length, units):           {context_vector.shape}')
 print(f'Attention weights shape: (batch_size, query_seq_length, value_seq_length): {attention_weights.shape}')
 
@@ -348,9 +366,13 @@ plt.subplot(1, 2, 2)
 plt.pcolormesh(example_tokens != 0)
 plt.title('Mask')
 
+print("DISPLAYED: plot of attention weights and mask")
+plt.show()
+
 # Text(0.5, 1.0, 'Mask')
 
 
+print("DISPLAYED: shape of attention_weights")
 print( attention_weights.shape )
 
 # TensorShape([64, 2, 24])
@@ -379,6 +401,9 @@ a1.plot(a1.get_xlim(), [zoom, zoom], color='k')
 
 # [<matplotlib.lines.Line2D at 0x7f233d8b4490>]
 # <Figure size 432x288 with 0 Axes>
+
+print("\nDISPLAYED: example attention weights")
+plt.show()
 
 
 class Decoder(tf.keras.layers.Layer):
@@ -1257,4 +1282,10 @@ print()
 # CPU times: user 31.6 ms, sys: 7.17 ms, total: 38.7 ms
 # Wall time: 16.1 ms
 
+print('DISPLAYED: example of embedding weights')
+print('shape=',tf.shape(encoder.embedding.weights))
 
+work = encoder.embedding.weights
+print(work)
+
+print('reduced=', tf.reduce_sum(work, axis=-1))
