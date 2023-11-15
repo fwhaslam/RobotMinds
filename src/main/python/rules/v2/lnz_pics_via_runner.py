@@ -21,7 +21,7 @@ from tensorflow import image, keras
 
 from land_and_sea_functions import *
 from _utilities.tf_tensor_tools import *
-from _utilities.tf_layer_tools import *
+from cycle_gan.tf_layer_tools import *
 
 # tf.compat.v1.enable_eager_execution()
 
@@ -111,49 +111,49 @@ def grow_layer_selu(filters,size,strides=1):
 
 ########################################################################################################################
 
-def create_model_v5( shape ):
+# def create_model_v5( shape ):
+#
+#     units = TERRAIN_TYPE_COUNT * WIDE * TALL
+#
+#     x = inputs = keras.Input(shape=shape)
+#
+#     x = keras.layers.Flatten()(x)
+#     x = keras.layers.Dense(units,activation='LeakyReLU')(x)
+#     x = keras.layers.Reshape( (WIDE,TALL,TERRAIN_TYPE_COUNT) )(x)
+#
+#     x = trim_layer_lrelu(128,4)(x)
+#     x = tf.keras.layers.Conv2D( TERRAIN_TYPE_COUNT, 1, strides=1, padding='same',activation='softmax')(x)
+#     outputs = x
+#
+#     model = tf.keras.Model(inputs=inputs, outputs=outputs,name=FLAVOR+'_model_v5')
+#     # model.compile( optimizer=tf.keras.optimizers.Adam(0.0001),
+#     #                loss=terrain_loss,
+#     #                metrics=['accuracy'] )
+#     return model, tf.keras.optimizers.Adam(0.0001), terrain_loss
 
-    units = TERRAIN_TYPE_COUNT * WIDE * TALL
-
-    x = inputs = keras.Input(shape=shape)
-
-    x = keras.layers.Flatten()(x)
-    x = keras.layers.Dense(units,activation='LeakyReLU')(x)
-    x = keras.layers.Reshape( (WIDE,TALL,TERRAIN_TYPE_COUNT) )(x)
-
-    x = trim_layer_lrelu(128,4)(x)
-    x = tf.keras.layers.Conv2D( TERRAIN_TYPE_COUNT, 1, strides=1, padding='same',activation='softmax')(x)
-    outputs = x
-
-    model = tf.keras.Model(inputs=inputs, outputs=outputs,name=FLAVOR+'_model_v5')
-    # model.compile( optimizer=tf.keras.optimizers.Adam(0.0001),
-    #                loss=terrain_loss,
-    #                metrics=['accuracy'] )
-    return model, tf.keras.optimizers.Adam(0.0001), terrain_loss
-
-def create_model_v4( shape ):
-
-    x = inputs = keras.Input(shape=shape)
-    # tf.print('x0=',x.shape)
-    x = trim_layer_selu(64,2,2)(x)       # ( bs, 16,16, 64 )
-    # tf.print('x1=',x.shape)
-    x = trim_layer_selu(192,2,2)(x)       # ( bs, 8,8, 192 )
-    x = trim_layer_selu(512,2,2)(x)       # ( bs, 4,4, 512 )
-    # tf.print('x2=',x.shape)
-
-    x = grow_layer_selu(512,2,2)(x)       # ( bs, 8,8, 512 )
-    x = grow_layer_selu(192,2,2)(x)       # ( bs, 16,16, 192 )
-    x = grow_layer_selu(64,2,2)(x)       # ( bs, 32,32, 64 )
-
-    # x = tf.keras.layers.Conv2DTranspose( TERRAIN_TYPE_COUNT, 1, activation='tanh')(x)   # (bs, 32,32, 2) # tanh for image
-    x = tf.keras.layers.Conv2DTranspose( TERRAIN_TYPE_COUNT, 1, activation='softmax')(x)   # (bs, 32,32, 2) # softmax for map
-    outputs = x
-
-    model = tf.keras.Model(inputs=inputs, outputs=outputs,name=FLAVOR+'_model_v4')
-    # model.compile( optimizer=tf.keras.optimizers.Adam(0.001),
-    #                loss=terrain_loss,
-    #                metrics=['accuracy'] )
-    return model, tf.keras.optimizers.Adam(0.001), terrain_loss
+# def create_model_v4( shape ):
+#
+#     x = inputs = keras.Input(shape=shape)
+#     # tf.print('x0=',x.shape)
+#     x = trim_layer_selu(64,2,2)(x)       # ( bs, 16,16, 64 )
+#     # tf.print('x1=',x.shape)
+#     x = trim_layer_selu(192,2,2)(x)       # ( bs, 8,8, 192 )
+#     x = trim_layer_selu(512,2,2)(x)       # ( bs, 4,4, 512 )
+#     # tf.print('x2=',x.shape)
+#
+#     x = grow_layer_selu(512,2,2)(x)       # ( bs, 8,8, 512 )
+#     x = grow_layer_selu(192,2,2)(x)       # ( bs, 16,16, 192 )
+#     x = grow_layer_selu(64,2,2)(x)       # ( bs, 32,32, 64 )
+#
+#     # x = tf.keras.layers.Conv2DTranspose( TERRAIN_TYPE_COUNT, 1, activation='tanh')(x)   # (bs, 32,32, 2) # tanh for image
+#     x = tf.keras.layers.Conv2DTranspose( TERRAIN_TYPE_COUNT, 1, activation='softmax')(x)   # (bs, 32,32, 2) # softmax for map
+#     outputs = x
+#
+#     model = tf.keras.Model(inputs=inputs, outputs=outputs,name=FLAVOR+'_model_v4')
+#     # model.compile( optimizer=tf.keras.optimizers.Adam(0.001),
+#     #                loss=terrain_loss,
+#     #                metrics=['accuracy'] )
+#     return model, tf.keras.optimizers.Adam(0.001), terrain_loss
 
 def create_model_v3( shape ):
 
@@ -185,28 +185,28 @@ def create_model_v2( shape ):
                    metrics=['accuracy'] )
     return model, tf.keras.optimizers.Adam(0.001), terrain_loss
 
-def create_model_v1( shape ):
-
-    units = TERRAIN_TYPE_COUNT * WIDE * TALL
-
-    x = inputs = keras.Input(shape=shape)
-    x = keras.layers.Flatten()(x)
-    x = keras.layers.Dense(units,activation='LeakyReLU')(x)
-    x = keras.layers.Dense(units,activation='LeakyReLU')(x)
-    # x = keras.layers.Dense(2048,activation='LeakyReLU')(x)
-    x = keras.layers.Reshape( (WIDE,TALL,TERRAIN_TYPE_COUNT) )(x)
-    x = keras.layers.Activation( 'softmax' )(x)
-    outputs = x
-
-    model = tf.keras.Model(inputs=inputs, outputs=outputs,name=FLAVOR+'_model_v1')
-    # model.compile( optimizer=tf.keras.optimizers.Adam(0.001),
-    #                loss=terrain_loss,
-    #                metrics=['accuracy'] )
-    return model, tf.keras.optimizers.Adam(0.001), terrain_loss
+# def create_model_v1( shape ):
+#
+#     units = TERRAIN_TYPE_COUNT * WIDE * TALL
+#
+#     x = inputs = keras.Input(shape=shape)
+#     x = keras.layers.Flatten()(x)
+#     x = keras.layers.Dense(units,activation='LeakyReLU')(x)
+#     x = keras.layers.Dense(units,activation='LeakyReLU')(x)
+#     # x = keras.layers.Dense(2048,activation='LeakyReLU')(x)
+#     x = keras.layers.Reshape( (WIDE,TALL,TERRAIN_TYPE_COUNT) )(x)
+#     x = keras.layers.Activation( 'softmax' )(x)
+#     outputs = x
+#
+#     model = tf.keras.Model(inputs=inputs, outputs=outputs,name=FLAVOR+'_model_v1')
+#     # model.compile( optimizer=tf.keras.optimizers.Adam(0.001),
+#     #                loss=terrain_loss,
+#     #                metrics=['accuracy'] )
+#     return model, tf.keras.optimizers.Adam(0.001), terrain_loss
 
 ########################################################################################################################
 
-model_id = 'v1'
+model_id = 'v2'
 if len(sys.argv)>1:
     model_id = sys.argv[1]
 print('using model_id =',model_id)
@@ -214,16 +214,16 @@ print('using model_id =',model_id)
 
 model = None
 match model_id:
-    case 'v1':
-        model, optimizer, loss_function = create_model_v1(INPUT_SHAPE)
+    # case 'v1':
+    #     model, optimizer, loss_function = create_model_v1(INPUT_SHAPE)
     case 'v2':
         model, optimizer, loss_function = create_model_v2(INPUT_SHAPE)
     case 'v3':
         model, optimizer, loss_function = create_model_v3(INPUT_SHAPE)
-    case 'v4':
-        model, optimizer, loss_function = create_model_v4(INPUT_SHAPE)
-    case 'v5':
-        model, optimizer, loss_function = create_model_v5(INPUT_SHAPE)
+    # case 'v4':
+    #     model, optimizer, loss_function = create_model_v4(INPUT_SHAPE)
+    # case 'v5':
+    #     model, optimizer, loss_function = create_model_v5(INPUT_SHAPE)
     case _:
         print('unknown model_id =',model_id)
         sys.exit(-1)

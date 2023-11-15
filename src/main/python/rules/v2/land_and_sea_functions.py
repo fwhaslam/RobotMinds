@@ -6,24 +6,25 @@ sys.path.append('../..')
 import tensorflow as tf
 import math
 import os
-import ast
 
 import _utilities.tf_tensor_tools as teto
 
-
 # number of possible output values, one value for each terrain type
-TERRAIN_TYPE_COUNT = 2
+TERRAIN_TYPE_COUNT = 4      # land, sea, peak, deep
 PI = math.pi
 
 # one color per terrain type
-TERRAIN_ONE_HOT_COLOR = tf.constant( ((0,255,0),(0,0,255)) )
+TERRAIN_ONE_HOT_COLOR = tf.constant(
+    ((64,192,0),     # land
+     (0,64,255),     # sea
+     (80,80,80),     # peak
+     (0,32,128))     # deep
+)
 
-# default values, should be overriden by main module
-TERRAIN_TYPE_GOAL = tf.Variable( [0.5,0.5] )
+TERRAIN_TYPE_GOAL = tf.Variable( [0.25,0.25,0.25,0.25] )
 TERRAIN_SURFACE_GOAL = tf.Variable( 0.5 )
 
 ########################################################################################################################
-
 
 def set_terrain_type_goal( ttg ):
     global TERRAIN_TYPE_GOAL
@@ -76,12 +77,10 @@ def round_peak( x ):
     return tf.math.sin( (x+0.5) * PI )
 
 
-########################################################################################################################
-
 @tf.function
 def terrain_loss( y_true, y_pred ):
 
-    r"""y_pred is a 2dim tensor of soft logits indicating terrain for each tile.
+    r"""y_pred is a 2d tensor of soft logits indicating terrain for each tile.
     In this first draft, 0=sea and 1=land
     Expected shape is: (batch_size, wide,tall, type_count )
     Loss is based on count of tile types, which is approximated by summing soft logits.
@@ -113,7 +112,7 @@ def terrain_loss( y_true, y_pred ):
         t.watch( surface_loss )
         t.watch( similarity_loss )
 
-    return template_mse*2 + terrain_loss*4 + surface_loss*3. + similarity_loss
+    return template_mse + terrain_loss + surface_loss + similarity_loss
 
 
 @tf.function
@@ -220,45 +219,113 @@ def terrain_similarity_loss( y_pred, shift=4 ):
     return - ( loss1 + loss2 + loss3 )
 
 ########################################################################################################################
+#   Color Processing
+
+RGB_2_XYZ_MATRIX = tf.transpose( tf.constant(
+    [[.4124564, .3575761, .1874305],
+     [.2126729, .7151522, .0711750],
+     [.0193339, .1191920, .9503041]], dtype=tf.float32 ))
+
+RGB_2_YUV_MATRIX = tf.transpose( tf.constant(
+    [[  .299,    .587,    .114],
+     [ -.14713, -.28886,  .436],
+     [  .615,   -.51499, -.10001]], dtype=tf.float32 ))
+
+# first five dimensions for eincode
+EINCODE = [
+    '',
+    'a,ab->b',
+    'ab,bc->ac',
+    'abc,cd->abd',
+    'abcd,de->abce',
+    'abcde,ef->abcdf',
+]
+
+# see: https://www.image-engineering.de/library/technotes/958-how-to-convert-between-srgb-and-ciexyz
+def rgb_to_xyz( source ):
+    r"""Will transform RGB values in axis=-1 to XYZ values, up to 5 dimensions.
+    Hmmm, this fails to linearize the sRGB values before applying the matrix."""
+    # print('source=',source)
+    num_dims = source.shape.rank
+    # print('num_dims=',num_dims)
+    return tf.einsum(EINCODE[num_dims], source, RGB_2_XYZ_MATRIX)
+
+# see https://stackoverflow.com/questions/5392061/algorithm-to-check-similarity-of-colors
+# see: https://en.wikipedia.org/wiki/YUV
+def rgb_to_yuv( source ):
+    r"""Will transform RGB values in axis=-1 to YUV values, up to 5 dimensions.
+    This is a decent approximation of human color perception."""
+    # print('source=',source)
+    return tf.einsum( EINCODE[source.shape.rank], source, RGB_2_YUV_MATRIX)
+
+# convert color grid to yuv
+TERRAIN_COLOR_YUV = rgb_to_yuv( tf.cast( TERRAIN_ONE_HOT_COLOR, tf.float32 ) / 256. )
+
+
+# store color templates for reuse
+color_template_map = {}
+
+def terrain_color_template( frame ):
+    r"""Reshape the color/yuv matrix so that it matches the image plus one dimension."""
+
+    key = str(frame)
+    if key in color_template_map: return color_template_map[key]
+
+    colors = TERRAIN_COLOR_YUV
+    for size in frame[::-1]:
+
+        colors = tf.expand_dims( colors, axis=0 )
+        # print("colors.shape=",colors.shape)
+
+        if (not size is None) and (size>1):
+            colors = tf.repeat( colors, repeats=size, axis=0 )
+        # print("colors=",colors)
+        # print("colors.shape=",colors.shape)
+
+    # print("colors=",colors)
+
+    color_template_map[key] = colors
+    return colors
+
+########################################################################################################################
 #   Image Processing
 
-TEMPLATE_SCALE = 32768.0
-TEMPLATE_RANGE = TEMPLATE_SCALE / TERRAIN_TYPE_COUNT
 
 def image_to_template( image ):
     r"""Create a 'template' image created from the available terrain types.
     The goal is to bring some of the original image information into the result,
         by adding a loss value based on divergence from the template.
+    The newer algorithm is to take the original color, and find the most
+        similar color in the TERRAIN_ONE_HOT_COLOR array.
     image = is shape (batch, WIDE, TALL, CHANNELS) of float [0,1)
     result = is shape (batch, WIDE, TALL, TERRAIN_TYPE_COUNT) of int(0/1)"""
 
     # tf.print( 'image=', image )
 
-    # shift from [0,1) representation
-    work = tf.cast( tf.multiply( image, TEMPLATE_SCALE ), tf.int16 )
-    # tf.print( 'work=', work )
+    image = tf.cast( image, tf.float32 )
+    frame = image.shape[:-1]
+    # print("frame=",frame)
 
-    # split into three layers
-    w1,w2,w3 = tf.split( work, 3, axis=-1)
-    # work = tf.slice( (0,0,0,0), (1,1,1,2), work )
-    # tf.print( 'w1=', w1 )
-    # tf.print( 'w2=', w2 )
-    # tf.print( 'w3=', w3 )
+    work = tf.expand_dims( image, axis=-2)
+    # print('more_dims=',work)
+    work = tf.repeat( work, TERRAIN_TYPE_COUNT, axis=-2)
+    # tf.print('works.shape=',work.shape)
+    # tf.print('work.dtype=',work.dtype)
+    work = rgb_to_yuv( work )
+    # tf.print('work.dtype=',work.dtype)
 
-    # combine bits for all three layers
-    work = tf.bitwise.bitwise_xor( w1,w2)
-    # tf.print('xor1=',work)
-    work = tf.bitwise.bitwise_xor( work,w3)
-    # tf.print('xor2=',work)
+    # array of color matrix same shape as image pixels
+    colors = terrain_color_template( frame )
+    # tf.print('colors.dtype=',colors.dtype)
 
-    # divide by range, int for terrain type, one-hot for comparison
-    work = tf.cast( tf.divide( tf.cast(work,tf.float32), TEMPLATE_RANGE ), tf.int32 )
-    # tf.print('count=',work)
-
-    work = tf.one_hot( work, TERRAIN_TYPE_COUNT )
-    # tf.print('one_hot=',work)
-
-    work = tf.squeeze( work, axis=-2 )
-    # tf.print('squeeze=',work)
+    # use distance to select MIN for each pixel in image (eg. the closest terrain color )
+    work = tf.math.squared_difference( work, colors )
+    # tf.print('diff2=',work)
+    work = tf.reduce_sum( work, axis=-1)
+    # tf.print("sum=",work)
+    work = tf.argmin( work, axis=-1)
+    # tf.print("min=",work)
+    work = tf.one_hot( work, TERRAIN_TYPE_COUNT, axis=-1 )
+    # tf.print("one_hot=",work)
 
     return work

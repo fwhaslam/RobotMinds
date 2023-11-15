@@ -15,7 +15,7 @@ import builtins
 import contextlib, io
 
 # module under test
-import rules.v1.land_and_sea_functions as lnz
+import rules.v2.land_and_sea_functions as lnz
 
 
 class test_land_and_sea(unittest.TestCase):
@@ -481,7 +481,7 @@ class test_land_and_sea(unittest.TestCase):
     def test__image_to_template(self):
 
         # shape = (1,   2,2,    3)
-        input = tf.constant( [[[[0,0,0],[0.25,0.25,0.25]],
+        input = tf.constant( [[[[0.,0.,0.],[0.0,0.25,0.9]],
                                [[0.5,0.5,0.5],[0.75,0.75,0.75]]]])
 
         # invocation
@@ -489,12 +489,11 @@ class test_land_and_sea(unittest.TestCase):
 
         # assertion
         # print('result=',result)
-        self.assertEqual("""tf.Tensor(
-[[[[1. 0.]
-   [1. 0.]]
-
-  [[0. 1.]
-   [0. 1.]]]], shape=(1, 2, 2, 2), dtype=float32)""", str(result))
+        self.assertEqual('tf.Tensor(\n'+
+                '[[[[0. 0. 0. 1.]\n'+
+                '   [0. 1. 0. 0.]]\n\n'+
+                '  [[0. 0. 1. 0.]\n'+
+                '   [1. 0. 0. 0.]]]], shape=(1, 2, 2, 4), dtype=float32)', str(result))
 
 
 ########################################################################################################################
@@ -541,6 +540,143 @@ class test_land_and_sea(unittest.TestCase):
 
     def test__terrain_similarity_loss__has_gradient(self):
         self.assertTrue( sft.loss_has_gradient( lnz.terrain_similarity_loss, output_shape=(2,2,2) ) )
+
+########################################################################################################################
+
+    def test__rgb_to_xyz( self ):
+
+        rgb = tf.constant( [ 1., 2., 3.] )
+        exampleY = 1*.2126729 + 2*.7151522 + 3 * .0711750
+
+        # invocation
+        result = lnz.rgb_to_xyz( rgb )
+
+        # assertion
+        print('result=',result)
+        print('exampleY=',exampleY)
+        self.assertAlmostEqual( exampleY, tensor_to_value(result[1]), places=6 )
+
+
+    def test__rgb_to_xyz__two_dims( self ):
+
+        rgb = tf.constant( [ [0.,0.,0.], [ 1., 2., 3.], [ 1., 1., 1.] ] )
+        exampleY = 1*.2126729 + 2*.7151522 + 3 * .0711750
+
+        # invocation
+        result = lnz.rgb_to_xyz( rgb )
+
+        # assertion
+        print('result=',result)
+        print('exampleY=',exampleY)
+        self.assertAlmostEqual( exampleY, tensor_to_value(result[1][1]), places=6 )
+
+    def test__rgb_to_xyz__three_dims( self ):
+
+        rgb = tf.constant( [ [ [0.,0.,0.], [ 1., 2., 3.], [ 1., 1., 1.] ] ] )
+        exampleY = 1*.2126729 + 2*.7151522 + 3 * .0711750
+
+        # invocation
+        result = lnz.rgb_to_xyz( rgb )
+
+        # assertion
+        print('result=',result)
+        print('exampleY=',exampleY)
+        self.assertAlmostEqual( exampleY, tensor_to_value(result[0][1][1]), places=6 )
+
+    def test__rgb_to_xyz__four_dims( self ):
+
+        rgb = tf.constant( [ [ [ [0.,0.,0.], [ 1., 2., 3.], [ 1., 1., 1.] ] ] ] )
+        exampleY = 1*.2126729 + 2*.7151522 + 3 * .0711750
+
+        # invocation
+        result = lnz.rgb_to_xyz( rgb )
+
+        # assertion
+        print('result=',result)
+        print('exampleY=',exampleY)
+        self.assertAlmostEqual( exampleY, tensor_to_value(result[0][0][1][1]), places=6 )
+
+    def test__rgb_to_xyz__five_dims( self ):
+
+        rgb = tf.constant( [ [ [ [ [0.,0.,0.], [ 1., 2., 3.], [ 1., 1., 1.] ] ] ] ] )
+        exampleY = 1*.2126729 + 2*.7151522 + 3 * .0711750
+
+        # invocation
+        result = lnz.rgb_to_xyz( rgb )
+
+        # assertion
+        print('result=',result)
+        print('exampleY=',exampleY)
+        self.assertAlmostEqual( exampleY, tensor_to_value(result[0][0][0][1][1]), places=6 )
+
+
+########################################################################################################################
+
+    def test__rgb_to_yuv( self ):
+
+        rgb = tf.constant( [ 1., 1., 1.] )
+        exampleY = 1*0.299 + 1*0.587 + 1*0.114      # approx = 1.0
+
+        # invocation
+        result = lnz.rgb_to_yuv( rgb )
+
+        # assertion
+        print('result=',result)
+        print('exampleY=',exampleY)
+        self.assertAlmostEqual( exampleY, tensor_to_value(result[0]), places=6 )
+
+
+    def test__rgb_to_yuv__two_dims( self ):
+
+        rgb = tf.constant( [ [0.,0.,0.], [ 1., 2., 3.], [ 1., 1., 1.] ] )
+        exampleY = 1*0.299 + 1*0.587 + 1*0.114      # approx = 1.0
+
+        # invocation
+        result = lnz.rgb_to_yuv( rgb )
+
+        # assertion
+        print('result=',result)
+        print('exampleY=',exampleY)
+        self.assertAlmostEqual( exampleY, tensor_to_value(result[2][0]), places=6 )
+
+    def test__rgb_to_yuv__three_dims( self ):
+
+        rgb = tf.constant( [ [ [0.,0.,0.], [ 1., 2., 3.], [ 1., 1., 1.] ] ] )
+        exampleY = 1*0.299 + 1*0.587 + 1*0.114      # approx = 1.0
+
+        # invocation
+        result = lnz.rgb_to_yuv( rgb )
+
+        # assertion
+        print('result=',result)
+        print('exampleY=',exampleY)
+        self.assertAlmostEqual( exampleY, tensor_to_value(result[0][2][0]), places=6 )
+
+    def test__rgb_to_yuv__four_dims( self ):
+
+        rgb = tf.constant( [ [ [ [0.,0.,0.], [ 1., 2., 3.], [ 1., 1., 1.] ] ] ] )
+        exampleY = 1*0.299 + 1*0.587 + 1*0.114      # approx = 1.0
+
+        # invocation
+        result = lnz.rgb_to_yuv( rgb )
+
+        # assertion
+        print('result=',result)
+        print('exampleY=',exampleY)
+        self.assertAlmostEqual( exampleY, tensor_to_value(result[0][0][2][0]), places=6 )
+
+    def test__rgb_to_yuv__five_dims( self ):
+
+        rgb = tf.constant( [ [ [ [ [0.,0.,0.], [ 1., 2., 3.], [ 1., 1., 1.] ] ] ] ] )
+        exampleY = 1*0.299 + 1*0.587 + 1*0.114      # approx = 1.0
+
+        # invocation
+        result = lnz.rgb_to_yuv( rgb )
+
+        # assertion
+        print('result=',result)
+        print('exampleY=',exampleY)
+        self.assertAlmostEqual( exampleY, tensor_to_value(result[0][0][0][2][0]), places=6 )
 
 ########################################################################################################################
 

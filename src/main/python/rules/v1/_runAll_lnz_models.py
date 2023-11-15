@@ -1,20 +1,27 @@
 import os
-import land_and_sea_functions as lnz
 
-# this does not get set for os.system invoked code
-# lnz.set_terrain_type_goal( [0.7,0.3] )
-# lnz.set_terrain_surface_goal( 0.2 )
+def set_environment():
+    os.putenv( 'TERRAIN_TYPE_GOAL', '[0.7,0.3]' )
+    os.putenv( 'TERRAIN_SURFACE_GOAL', '0.2' )
+    return
 
-os.system('python lnz_rand_via_runner.py v1')
-os.system('python lnz_rand_via_runner.py v2')
-os.system('python lnz_rand_via_runner.py v3')
-os.system('python lnz_rand_via_runner.py v4')
-os.system('python lnz_rand_via_runner.py v5')
+def run_all():
 
-os.system('python lnz_pics_via_runner.py v1')
-os.system('python lnz_pics_via_runner.py v2')
-os.system('python lnz_pics_via_runner.py v3')
-os.system('python lnz_pics_via_runner.py v4')
-os.system('python lnz_pics_via_runner.py v5')
+    os.system('python lnz_rand_via_runner.py v1')
+    os.system('python lnz_rand_via_runner.py v2')
+    os.system('python lnz_rand_via_runner.py v3')
+    os.system('python lnz_rand_via_runner.py v4')
+    os.system('python lnz_rand_via_runner.py v5')
 
-os.system('python lnz_double_output_via_runner.py')
+    os.system('python lnz_pics_via_runner.py v1')
+    os.system('python lnz_pics_via_runner.py v2')
+    os.system('python lnz_pics_via_runner.py v3')
+    os.system('python lnz_pics_via_runner.py v4')
+    os.system('python lnz_pics_via_runner.py v5')
+
+    os.system('python lnz_double_output_via_runner.py')
+    return
+
+if __name__ == "__main__":
+    set_environment()
+    run_all()

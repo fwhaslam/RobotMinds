@@ -10,3 +10,9 @@ technique?  I have no idea.  So far so good.
 Step One / v1: land and sea = generate a map similar to old school strategy maps, 
     with just two types of terrain.  The rules specify the ratios I want to see,
     and the amount of 'surface' (eg. coastline )
+
+Step Two / v2: land, sea, deep, peaks = four types of terrain
+    Terrain has a ratio of volumes  The surface goals are defined for terrain pairs.  
+    eg.  sea to peak should be zero, land to deep should be zero, etc.
+    Dropping some of the less successful models.
+    Templates will be constructed based on color similarity between image and ONE_HOT_COLORS

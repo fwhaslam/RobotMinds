@@ -32,7 +32,7 @@ from tensorflow import image, keras
 
 from land_and_sea_functions import *
 from _utilities.tf_tensor_tools import *
-from _utilities.tf_layer_tools import *
+from cycle_gan.tf_layer_tools import *
 
 # tf.compat.v1.enable_eager_execution()
 

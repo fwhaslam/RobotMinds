@@ -22,7 +22,7 @@ from tensorflow import image, keras
 
 from land_and_sea_functions import *
 from _utilities.tf_tensor_tools import *
-from cycle_gan.tf_layer_tools import *
+from _utilities.tf_layer_tools import *
 
 # tf.compat.v1.enable_eager_execution()
 
@@ -30,8 +30,8 @@ print(tf.__version__)
 
 plt.ion()
 
-set_terrain_type_goal( [0.7,0.3] )
-set_terrain_surface_goal( 0.2 )
+# set_terrain_type_goal( [0.7,0.3] )
+# set_terrain_surface_goal( 0.2 )
 
 # # check the dataset parameters
 # print("train[s]=", str(train_images.shape) )
