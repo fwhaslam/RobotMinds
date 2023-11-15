@@ -10,9 +10,15 @@ Create quality evaluator for turn based puzzle games
 
 ## Next Tasks:
 
+cyclegan_runner, update loss to add a value based on the opposite discriminator positively identifying the image
+        ( eg.  The horse discriminator thinking that the altered horse image is still a horse )
+        ( this might address the issue of white horses not being altered to look like zebras )
+
+methods for loss that let you set the goals
+
 add 'variance' measure, something that checks there is not too much self similarity
     could simply use a zip algorithm ... hmm
-
+--------------------------------------------------------------------------------------
 find memory enhanced neural network example from 
 https://analyticsindiamag.com/memory-enhanced-neural-networks-might-be-the-next-big-thing/
 

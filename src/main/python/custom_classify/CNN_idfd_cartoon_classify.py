@@ -7,7 +7,7 @@
 #
 #   This is a copy of the code with the following changes:
 #       switch to Kaggle Cartoon Reduced dataset ( 1/32 of the Kaggle Cartoon dataset )
-#       dataset constructed using 'image_dataset_from_directory'
+#       'idfd' = dataset constructed using 'image_dataset_from_directory'
 #       changed image sizes
 #       used aggressive CNN to reduce model size and memory signature
 #       dropped second round of training
