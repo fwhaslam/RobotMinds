@@ -41,7 +41,14 @@ try these things:
 Something strange here, feature is BOTH [0,1] and [1,0] paired.
 So we would expect both ends of the result to have equal results,
 BUT one end is consistently not changing.
-    Committing so i can try on another system.
+    Committing so I can try on another system.
+
+The problem was with the 'shuffle' function, I both misunderstood how 
+it was used AND there were issues with its design.  Shuffle example is 
+FIXED in the v4/lnz_ratio_run_local.py
+
+? does the dual input ( eg. [ x, 1-x ] ) provide for easier learning?
+Try it again without the dual input.
 
 1) feature range an exponential ranged value
 1) integral feature with embedding for representation

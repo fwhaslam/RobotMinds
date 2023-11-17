@@ -59,10 +59,15 @@ print("object_features=",tf.shape(object_features))
 
 #######################################################################
 
-features = object_features # + random_features # + terrain_features
-template_image_set = image_to_template( features )
+features_linear = object_features # + random_features # + terrain_features
+template_image_set_linear = image_to_template( features_linear )
 
-tf.random.shuffle( features, 12345 )
+# shuffle with same seed
+tf.random.set_seed( 12345 )
+features = tf.random.shuffle( features_linear )
+tf.random.set_seed( 12345 )
+template_image_set = tf.random.shuffle( template_image_set_linear )
+
 tflen = len(features)
 train_segment = (int)(tflen * .8)
 print("train_segment=",train_segment)

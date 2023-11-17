@@ -76,15 +76,19 @@ print("RandomFeaturesShape=",tf.shape(random_features))
 
 #######################################################################
 
-features = random_features  # + terrain_features
-template_image_set = image_to_template( features )
+features_linear = random_features  # + terrain_features
+template_image_set_linear = image_to_template( features_linear )
+
+# shuffle with same seed
+tf.random.set_seed( 12345 )
+features = tf.random.shuffle( features_linear )
+tf.random.set_seed( 12345 )
+template_image_set = tf.random.shuffle( template_image_set_linear )
 
 
-tf.random.shuffle( features, 12345 )
 tflen = len(features)
 train_segment = (int)(tflen * .8)
 print("train_segment=",train_segment)
-
 
 train_images = features[ 0 : train_segment ]
 train_image_set = template_image_set[ 0 : train_segment ]
