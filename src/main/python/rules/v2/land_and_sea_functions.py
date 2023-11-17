@@ -6,6 +6,7 @@ sys.path.append('../..')
 import tensorflow as tf
 import math
 import os
+import ast
 
 import _utilities.tf_tensor_tools as teto
 
@@ -76,6 +77,8 @@ def round_peak( x ):
     r"""1 is at x=0.  -1 is at x=+/-1"""
     return tf.math.sin( (x+0.5) * PI )
 
+
+########################################################################################################################
 
 @tf.function
 def terrain_loss( y_true, y_pred ):

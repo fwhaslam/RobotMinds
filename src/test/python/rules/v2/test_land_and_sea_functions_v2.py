@@ -92,109 +92,88 @@ class test_land_and_sea(unittest.TestCase):
 
     def test__terrain_loss__perfect(self):
 
-        # logits to [[1,0],[1,1]]
-        input = [[[0.,1.],
-                    [1.,0.]],
-                   [[0.,1.],
-                    [1.,0.]]]
-        # batch_size=3, wide/tall=2x2, types=2
-        inputs = tf.constant( [input,input,input]  )
-        # tf.print("Input=",tf.shape(input))
-        template = [[[0.,1.],
-                  [1.,0.]],
-                 [[0.,1.],
-                  [1.,0.]]]
-        # batch_size=3, wide/tall=2x2, types=2
-        templates = tf.constant( [template,template,template]  )
+        # logits to [[3,0],[3,0],[3,0]]] :: shape ( 3,2,2,4 )
+        y_result = tf.constant( 3 * [ 2 * [ [ [0., 0., 0., 1.], [ 1., 0., 0., 0.] ] ] ] )
+        sft.object_has_shape( [3,2,2,4], y_result )
+
+        # logits to [[3,0],[3,0],[3,0]]] :: shape ( 3,2,2,4 )
+        y_goal = tf.constant( 3 * [ 2 * [ [ [0., 0., 0., 1.], [ 1., 0., 0., 0.] ] ] ] )
+        sft.object_has_shape( [3,2,2,4], y_goal )
 
         # invocation
-        result = lnz.terrain_loss( templates, inputs )
+        result = lnz.terrain_loss( y_goal, y_result )
         # tf.print("RESULT=",result)
-        # tf.print("RESULT=",tf.get_static_value(result))
 
         # assertions
         self.assertEqual('(3,)',str(result.shape))
         self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
 
-        self.assertAlmostEqual( 0., result[0], places=6 )
-        self.assertAlmostEqual( 0., result[1], places=6 )
-        self.assertAlmostEqual( 0., result[2], places=6 )
+        self.assertAlmostEqual( 0.25000012, result[0], places=6 )
+        self.assertAlmostEqual( 0.25000012, result[1], places=6 )
+        self.assertAlmostEqual( 0.25000012, result[2], places=6 )
 
     def test__terrain_loss__mostly_bad(self):
         # test terrain_loss
 
-        # logits to [[1,1],[1,1]]
-        input = [[[0.4,0.6],
-                    [0.4,0.6]],
-                   [[0.4,0.6],
-                    [0.4,0.6]]]
-        # batch_size=3, wide/tall=2x2, types=2
-        inputs = tf.constant( [input,input,input]  )
-        # tf.print("Input=",tf.shape(input))
-        template = [[[0.,1.],
-                    [0.,1.]],
-                   [[0.,1.],
-                    [0.,1.]]]
-        templates = tf.constant( [template,template,template]  )
+        # logits to [[3,3],[3,3]] :: shape ( 3,2,2,4 )
+        y_result = tf.constant( 3 * [ 2 * [ 2 * [ [ 0.4, 0., 0., 0.6] ] ] ] )
+        sft.object_has_shape( [3,2,2,4], y_result )
 
+        # logits to [[1,1],[1,1]] :: shape ( 3,2,2,4 )
+        y_goal = tf.constant( 3 * [ 2 * [ 2 * [ [ 0., 0., 0., 1.] ] ] ] )
+        sft.object_has_shape( [3,2,2,4], y_goal )
 
     # invocation
-        result = lnz.terrain_loss( templates, inputs )
+        result = lnz.terrain_loss( y_goal, y_result )
         # tf.print("RESULT=",result)
 
-        # assertions
+        # assertions :: batch of 3 results
         self.assertEqual('(3,)',str(result.shape))
         self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
 
-        self.assertAlmostEqual( 1.6599972, result[0], places=6 )
-        self.assertAlmostEqual( 1.6599972, result[1], places=6 )
-        self.assertAlmostEqual( 1.6599972, result[2], places=6 )
+        self.assertAlmostEqual( 1.4549986, result[0], places=6 )
+        self.assertAlmostEqual( 1.4549986, result[1], places=6 )
+        self.assertAlmostEqual( 1.4549986, result[2], places=6 )
 
     def test__terrain_loss__types_failure(self):
         # test terrain_loss
 
-        # logits to [[1,1],[1,1]]
-        input = [[[0.,1.],
-                    [0.,1.]],
-                   [[0.,1.],
-                    [0.,1.]]]
-        # batch_size=3, wide/tall=2x2, types=2
-        inputs = tf.constant( [input,input,input]  )
-        # tf.print("Input=",tf.shape(input))
+        # logits to [[3,3],[3,3],[3,3]] :: shape ( 3,2,2,4 )
+        y_result = tf.constant(  3 * [ 2 * [ 2 * [ [ 0.,0.,0.,1.] ] ] ] )
+        sft.object_has_shape( [3,2,2,4], y_result )
 
-        template = [[[0.,1.],
-                  [0.,1.]],
-                 [[0.,1.],
-                  [0.,1.]]]
-        templates = tf.constant( [template,template,template]  )
+        # logits to [[3,3],[3,3],[3,3]] :: shape ( 3,2,2,4 )
+        y_goal = tf.constant(  3 * [ 2 * [ 2 * [ [ 0.,0.,0.,1.] ] ] ] )
+        sft.object_has_shape( [3,2,2,4], y_goal )
 
         # invocation
-        result = lnz.terrain_loss( templates, inputs )
+        result = lnz.terrain_loss( y_goal, y_result )
         # print("RESULT=",result)
 
-        # assertions
+        # assertions :: batch of 3 results
         self.assertEqual('(3,)',str(result.shape))
         self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
 
-        self.assertAlmostEqual( 1.5, result[0], places=6 )
-        self.assertAlmostEqual( 1.5, result[1], places=6 )
-        self.assertAlmostEqual( 1.5, result[2], places=6 )
+        self.assertAlmostEqual( 1.3749998, result[0], places=6 )
+        self.assertAlmostEqual( 1.3749998, result[1], places=6 )
+        self.assertAlmostEqual( 1.3749998, result[2], places=6 )
 
     def test__terrain_loss__has_gradient(self):
-        self.assertTrue(sft.loss_has_gradient(lnz.terrain_loss, arg_count=2, output_shape=(2, 2, 2)))
+        self.assertTrue(sft.loss_has_gradient(lnz.terrain_loss, arg_count=2, output_shape=(2, 2, 4)))
 
 ########################################################################################################################
 # remember: loss needs to be reduced, so the desired state is lowest
 
     def test__terrain_type_loss__on_target(self):
 
-        # logits to [[1,0],[1,0]]
-        element = [[[0.1,0.9],
-                    [0.8,0.2]],
-                   [[0.4,0.6],
-                    [0.7,0.3]]]
+        # logits to [[3,0],[3,0]]
+        element = [[[0.1,0.1,0.1,0.7],
+                    [0.6,0.1,0.1,0.2]],
+                   [[0.4,0.0,0.0,0.6],
+                    [0.7,0.0,0.0,0.3]]]
         # batch_size=2, wide/tall=2x2, types=2
         input = tf.constant( [element,element]  )
+        sft.object_has_shape( [2,2,2,4], input )
 
         # invocation
         result = lnz.terrain_type_loss( input )
@@ -202,18 +181,20 @@ class test_land_and_sea(unittest.TestCase):
 
         # assertions
         # self.assertEqual( 0., tf.get_static_value( result ) )
-        self.assertEqual( "tf.Tensor([0. 0.], shape=(2,), dtype=float32)", str(result) )
+        self.assertEqual( "tf.Tensor([0.2 0.2], shape=(2,), dtype=float32)", str(result) )
+
 
     def test__terrain_type_loss__max_off_target(self):
 
-        # logits to [[1,0],[1,1]]
-        element = [[[0.0,1.],
-                    [0.0,1.]],
-                   [[0.0,1.],
-                    [0.0,1.]]]
+        # logits to [[3,0],[3,3]]
+        element = [[[0.,0.,0.,1.],
+                    [0.,0.,0.,1.]],
+                   [[0.,0.,0.,1.],
+                    [0.,0.,0.,1.]]]
         # batch_size2, wide/tall=2x2, types=2
         input = tf.constant( [element,element]  )
         # tf.print("Input=",tf.shape(input))
+        sft.object_has_shape( [2,2,2,4], input )
 
         # invocation
         result = lnz.terrain_type_loss( input )
@@ -221,18 +202,19 @@ class test_land_and_sea(unittest.TestCase):
 
         # assertions
         # self.assertEqual( 0., tf.get_static_value( result ) )
-        self.assertEqual( "tf.Tensor([0.5 0.5], shape=(2,), dtype=float32)", str(result) )
+        self.assertEqual( "tf.Tensor([0.375 0.375], shape=(2,), dtype=float32)", str(result) )
 
     def test__terrain_type_loss__half_off_target(self):
 
-        # logits to [[1,1],[1,0]]
-        element = [[[0.,1.],
-                    [0.,1.]],
-                   [[0.,1.],
-                    [1.,0.]]]
+        # logits to [[3,3],[3,0]]
+        element = [[[0.,0.,0.,1.],
+                    [0.,0.,0.,1.]],
+                   [[0.,0.,0.,1.],
+                    [1.,0.,0.,0.]]]
         # batch_size2, wide/tall=2x2, types=2
         input = tf.constant( [element,element]  )
         # tf.print("Input=",tf.shape(input))
+        sft.object_has_shape( [2,2,2,4], input )
 
         # invocation
         result = lnz.terrain_type_loss( input )
@@ -245,46 +227,44 @@ class test_land_and_sea(unittest.TestCase):
 
     def test__terrain_type_loss__mixed(self):
 
-        # logits to [[?,0],[1,1]]
-        element1 = [[[0.5,0.5],
-                     [0.5,0.5]],
-                    [[0.5,0.5],
-                     [0.5,0.5]]]
-        element2 = [[[0.9,0.1],
-                     [0.8,0.2]],
-                    [[0.7,0.5],
-                     [0.6,0.4]]]
+        # logits to [[?,?],[?,?]]
+        element1 = [[[0.5,0.,0.,0.5],
+                     [0.5,0.,0.,0.5]],
+                    [[0.5,0.,0.,0.5],
+                     [0.5,0.,0.,0.5]]]
+        # logits to [[0,0],[0.0]]
+        element2 = [[[0.9,0.,0.,0.1],
+                     [0.8,0.,0.,0.2]],
+                    [[0.7,0.,0.,0.5],
+                     [0.6,0.,0.,0.4]]]
         # batch_size2, wide/tall=2x2, types=2
         input = tf.constant( [element1,element2]  )
         # tf.print("Input=",tf.shape(input))
+        sft.object_has_shape( [2,2,2,4], input )
 
         # invocation
         result = lnz.terrain_type_loss( input )
         # print("RESULT=",result)
 
         # assertions
-        self.assertEqual('(2,)',str(result.shape))
-        self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
-
-        value = tensor_to_value( result )
-        self.assertAlmostEqual( 0., result[0], places=6 )
-        self.assertAlmostEqual( 0.225, result[1], places=6 )
+        self.assertEqual('tf.Tensor([0.25   0.2625], shape=(2,), dtype=float32)',str(result))
 
     def test__terrain_type_loss__has_gradient(self):
-        self.assertTrue( sft.loss_has_gradient( lnz.terrain_type_loss, output_shape=(2,2,2) ) )
+        self.assertTrue( sft.loss_has_gradient( lnz.terrain_type_loss, output_shape=(2,2,4) ) )
 
 ########################################################################################################################
 # remember: loss needs to be reduced, so the desired state is lowest
 
     def test__terrain_certainty_loss__completely_certain(self):
 
-        # logits to [[1,0],[1,0]]
-        element = [[[0.0,1.0],
-                    [1.0,0.0]],
-                   [[0.0,1.0],
-                    [1.0,0.0]]]
+        # logits to [[3,0],[3,0]]
+        element = [[[0.,0.,0.,1.0],
+                    [1.0,0.,0.,0.0]],
+                   [[0.0,0.,0.,1.0],
+                    [1.0,0.,0.,0.0]]]
         # batch_size=2, wide/tall=2x2, types=2
         input = tf.constant( [element,element]  )
+        sft.object_has_shape( [2,2,2,4], input )
 
         # invocation
         result = lnz.terrain_certainty_loss( input )
@@ -295,60 +275,50 @@ class test_land_and_sea(unittest.TestCase):
         self.assertEqual( "tf.Tensor([0. 0.], shape=(2,), dtype=float32)", str(result) )
 
     def test__terrain_certainty_loss__completely_uncertain(self):
-        # test terrain_loss
 
-        # logits to [[1,0],[1,1]]
-        element = [[[0.5,0.5],
-                    [0.5,0.5]],
-                   [[0.5,0.5],
-                    [0.5,0.5]]]
-        # batch_size2, wide/tall=2x2, types=2
-        input = tf.constant( [element,element]  )
-        # tf.print("Input=",tf.shape(input))
+        # logits to [[0/3,0/3],[0/3,0/3]] :: shape ( 2, 2, 2, 4 )
+        y_result = tf.constant( 2 * [ 2 * [ 2 * [ [0.25,0.25,0.25,0.25 ] ] ] ] )
+        sft.object_has_shape( [2,2,2,4], y_result )
 
         # invocation
-        result = lnz.terrain_certainty_loss( input )
-        # print("RESULT=",result)
-
-        # assertions
-        # self.assertEqual( 0., tf.get_static_value( result ) )
-        self.assertEqual( "tf.Tensor([1. 1.], shape=(2,), dtype=float32)", str(result) )
-
-    def test__terrain_certainty_loss__half_uncertain(self):
-        # test terrain_loss
-
-        # logits to [[?,0],[1,1]]
-        element = [[[0.75,0.25],
-                    [0.25,0.75]],
-                   [[0.25,0.75],
-                    [0.75,0.25]]]
-        # batch_size2, wide/tall=2x2, types=2
-        input = tf.constant( [element,element]  )
-        # tf.print("Input=",tf.shape(input))
-
-        # invocation
-        result = lnz.terrain_certainty_loss( input )
+        result = lnz.terrain_certainty_loss( y_result )
         # print("RESULT=",result)
 
         # assertions
         # self.assertEqual( 0., tf.get_static_value( result ) )
         self.assertEqual( "tf.Tensor([0.5 0.5], shape=(2,), dtype=float32)", str(result) )
 
+    def test__terrain_certainty_loss__half_uncertain(self):
+
+        # logits to [[0,0],[0,0]] :: shape ( 2, 2, 2, 4 )
+        y_result = tf.constant( 2 * [ 2 * [ 2 * [ [0.7,0.1,0.1,0.1] ] ] ] )
+        sft.object_has_shape( [2,2,2,4], y_result )
+
+        # invocation
+        result = lnz.terrain_certainty_loss( y_result )
+        # print("RESULT=",result)
+
+        # assertions
+        # self.assertEqual( 0., tf.get_static_value( result ) )
+        self.assertEqual( "tf.Tensor([0.3 0.3], shape=(2,), dtype=float32)", str(result) )
+
     def test__terrain_certainty_loss__mixed(self):
         # test terrain_loss
 
-        # logits to [[?,0],[1,1]]
-        element1 = [[[0.0,1.0],
-                    [1.0,0.0]],
-                   [[0.0,1.0],
-                    [1.0,0.0]]]
-        element2 = [[[0.75,0.25],
-                    [0.25,0.75]],
-                   [[0.25,0.75],
-                    [0.75,0.25]]]
+        # logits to [[3,0],[3,0]]
+        element1 = [[[0.0,0.,0.,1.0],
+                    [1.0,0.,0.,0.0]],
+                   [[0.0,0.,0.,1.0],
+                    [1.0,0.,0.,0.0]]]
+        # logits to [[0,3],[0,3]]
+        element2 = [[[0.75,0.,0.,0.25],
+                    [0.25,0.,0.,0.75]],
+                   [[0.25,0.,0.,0.75],
+                    [0.75,0.,0.,0.25]]]
         # batch_size2, wide/tall=2x2, types=2
-        input = tf.constant( [element1,element2]  )
+        input = tf.constant( [element1,element2] )
         # tf.print("Input=",tf.shape(input))
+        sft.object_has_shape( [2,2,2,4], input )
 
         # invocation
         result = lnz.terrain_certainty_loss( input )
@@ -356,29 +326,30 @@ class test_land_and_sea(unittest.TestCase):
 
         # assertions
         # self.assertEqual( 0., tf.get_static_value( result ) )
-        self.assertEqual( "tf.Tensor([0.  0.5], shape=(2,), dtype=float32)", str(result) )
+        self.assertEqual( "tf.Tensor([0.   0.25], shape=(2,), dtype=float32)", str(result) )
 
     def test__terrain_certainty_loss__has_gradient(self):
-        self.assertTrue( sft.loss_has_gradient( lnz.terrain_certainty_loss, output_shape=(2,2,2) ) )
+        self.assertTrue( sft.loss_has_gradient( lnz.terrain_certainty_loss, output_shape=(2,2,4) ) )
 
 ########################################################################################################################
 # remember: loss needs to be reduced, so the desired state is lowest
 
     def test__terrain_surface_loss__no_surface(self):
 
-        # logits to [[1,1],[1,1]]
-        element = [[[0.0,1.0],
-                    [0.0,1.0]],
-                   [[0.0,1.0],
-                    [0.0,1.0]]]
+        # logits to [[3,3][3,3]]
+        element = [[[0.0,0.,0.,1.0],
+                    [0.0,0.,0.,1.0]],
+                   [[0.0,0.,0.,1.0],
+                    [0.0,0.,0.,1.0]]]
         # batch_size=3, wide/tall=2x2, types=2
         input = tf.constant( [element,element,element]  )
+        sft.object_has_shape( [3,2,2,4], input )
 
         # invocation
         result = lnz.terrain_surface_loss( input )
         # print("RESULT=",result)
 
-        # assertions
+        # assertions :: batch of 3 results
         self.assertEqual('(3,)',str(result.shape))
         self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
 
@@ -389,37 +360,39 @@ class test_land_and_sea(unittest.TestCase):
 
     def test__terrain_surface_loss__max_surface(self):
 
-        # logits to [[1,0],[0,1]]
-        element = [[[0.0,1.0],
-                    [1.0,0.0]],
-                   [[1.0,0.0],
-                    [0.0,1.0]]]
+        # logits to [[3,0],[0,3]]
+        element = [[[0.0,0.,0.,1.0],
+                    [1.0,0.,0.,0.0]],
+                   [[1.0,0.,0.,0.0],
+                    [0.0,0.,0.,1.0]]]
         # batch_size=1, wide/tall=2x2, types=2
         input = tf.constant( [element,]  )
+        sft.object_has_shape( [1,2,2,4], input )
 
         # invocation
         result = lnz.terrain_surface_loss( input )
         # print("RESULT=",result)
 
-        # assertions
+        # assertions :: batch with 1 result
         # self.assertEqual( 0., tf.get_static_value( result ) )
         self.assertEqual( 'tf.Tensor([1.], shape=(1,), dtype=float32)', str(result) )
 
     def test__terrain_surface_loss__half_surface(self):
 
-        # logits to [[0,1],[0,1]]
-        element = [[[1.0,0.0],
-                    [0.0,1.0]],
-                   [[1.0,0.0],
-                    [0.0,1.0]]]
+        # logits to [[0,3],[0,3]]
+        element = [[[1.0,0.,0.,0.0],
+                    [0.0,0.,0.,1.0]],
+                   [[1.0,0.,0.,0.0],
+                    [0.0,0.,0.,1.0]]]
         # batch_size=1, wide/tall=2x2, types=2
         input = tf.constant( [element,]  )
+        sft.object_has_shape( [1,2,2,4], input )
 
         # invocation
         result = lnz.terrain_surface_loss( input )
         # print("RESULT=",result)
 
-        # assertions
+        # assertions :: batch with one result
         self.assertEqual('(1,)',str(result.shape))
         self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
 
@@ -429,18 +402,19 @@ class test_land_and_sea(unittest.TestCase):
     def test__terrain_surface_loss__mixed(self):
 
         # logits to [[1,0],[1,1]]
-        element = [[[0.1,0.9],
-                    [1.0,0.0]],
-                   [[0.2,0.8],
-                    [0.3,0.7]]]
+        element = [[[0.1,0.,0.,0.9],
+                    [1.0,0.,0.,0.0]],
+                   [[0.2,0.,0.,0.8],
+                    [0.3,0.,0.,0.7]]]
         # batch_size=1, wide/tall=2x2, types=2
         input = tf.constant( [element,]  )
+        sft.object_has_shape( [1,2,2,4], input )
 
         # invocation
         result = lnz.terrain_surface_loss( input )
         # print("RESULT=",result)
 
-        # assertions
+        # assertions :: batch with 1 result
         self.assertEqual('(1,)',str(result.shape))
         self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
         self.assertAlmostEqual( 0.241292, result[0], places=6 )
@@ -453,18 +427,19 @@ class test_land_and_sea(unittest.TestCase):
         lnz.set_terrain_surface_goal( 0.3 )
 
         try:
-            # logits to [[1,0],[1,1]]
-            element = [ [[0.,1.],[0.,1.],[0.,1.]],
-                        [[1.,0.],[1.,0.],[1.,0.],],
-                        [[1.,0.],[1.,0.],[1.,0.],] ]
+            # logits to [[3,3,3],[0,0,0],[0,0,0]]]
+            element = [ [[0.,0.,0.,1.],[0.,0.,0.,1.],[0.,0.,0.,1.]],
+                        [[1.,0.,0.,0.],[1.,0.,0.,0.],[1.,0.,0.,0.],],
+                        [[1.,0.,0.,0.],[1.,0.,0.,0.],[1.,0.,0.,0.],] ]
             # batch_size=1, wide/tall=2x2, types=2
             input = tf.constant( [element,]  )
+            sft.object_has_shape( [1,3,3,4], input )
 
             # invocation
             result = lnz.terrain_surface_loss( input )
             # print("RESULT=",result)
 
-            # assertions
+            # assertions :: batch with 1 result
             self.assertEqual('(1,)',str(result.shape))
             self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
             self.assertAlmostEqual( 0.066667, result[0], places=6 )
@@ -474,7 +449,7 @@ class test_land_and_sea(unittest.TestCase):
 
 
     def test__terrain_surface_loss__has_gradient(self):
-        self.assertTrue( sft.loss_has_gradient( lnz.terrain_surface_loss, output_shape=(2,2,2) ) )
+        self.assertTrue( sft.loss_has_gradient( lnz.terrain_surface_loss, output_shape=(2,2,4) ) )
 
 ########################################################################################################################
 
@@ -500,15 +475,16 @@ class test_land_and_sea(unittest.TestCase):
 
     def test__terrain_similarity_loss__allZeros(self):
 
-        # shape (1, 4,4, 2 )
+        # shape (2, 4,4, 2 )
         inputs = tf.cast( tf.zeros ( (2,4,4,2) ), tf.float32 )
+        sft.object_has_shape( [2,4,4,2], inputs )
         # print('shape=',tf.shape(inputs))
 
         # invocation
         result = lnz.terrain_similarity_loss( inputs, shift=2 )
         # print("RESULT=",result)
 
-        # assertions
+        # assertions :: batch of 2 results
         self.assertEqual('(2,)',str(result.shape))
         self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
         self.assertAlmostEqual( 0., result[0], places=6 )
@@ -519,33 +495,34 @@ class test_land_and_sea(unittest.TestCase):
     def test__terrain_similarity_loss__sameAtTwo(self):
 
         # bottm two rows are reverse of top two, should have high loss value
-        element = [ [[0.,1.],[0.,1.],[0.,1.],[0.,1.]],
-                    [[1.,0.],[1.,0.],[1.,0.],[1.,0.]],
-                    [[1.,0.],[1.,0.],[1.,0.],[1.,0.]],
-                    [[0.,1.],[0.,1.],[0.,1.],[0.,1.]], ]
+        element = [ [[0.,0.,0.,1.],[0.,0.,0.,1.],[0.,0.,0.,1.],[0.,0.,0.,1.]],
+                    [[1.,0.,0.,0.],[1.,0.,0.,0.],[1.,0.,0.,0.],[1.,0.,0.,0.]],
+                    [[1.,0.,0.,0.],[1.,0.,0.,0.],[1.,0.,0.,0.],[1.,0.,0.,0.]],
+                    [[0.,0.,0.,1.],[0.,0.,0.,1.],[0.,0.,0.,1.],[0.,0.,0.,1.]], ]
         # batch_size=1, wide/tall=2x2, types=2
         inputs = tf.constant( [element,]  )
-        print('shape=',tf.shape(inputs))
+        sft.object_has_shape( [1,4,4,4], inputs )
 
         # invocation
         result = lnz.terrain_similarity_loss( inputs, shift=2 )
         # print("RESULT=",result)
 
-        # assertions
+        # assertions :: batch of 1 result
         self.assertEqual('(1,)',str(result.shape))
         self.assertEqual('<dtype: \'float32\'>',str(result.dtype))
-        self.assertAlmostEqual( -2., tensor_to_value(result[0]), places=6 )
+        self.assertAlmostEqual( -1., tensor_to_value(result[0]), places=6 )
 
         return
 
     def test__terrain_similarity_loss__has_gradient(self):
-        self.assertTrue( sft.loss_has_gradient( lnz.terrain_similarity_loss, output_shape=(2,2,2) ) )
+        self.assertTrue( sft.loss_has_gradient( lnz.terrain_similarity_loss, output_shape=(2,2,4) ) )
 
 ########################################################################################################################
 
     def test__rgb_to_xyz( self ):
 
         rgb = tf.constant( [ 1., 2., 3.] )
+        sft.object_has_shape( [3], rgb )
         exampleY = 1*.2126729 + 2*.7151522 + 3 * .0711750
 
         # invocation
@@ -560,6 +537,7 @@ class test_land_and_sea(unittest.TestCase):
     def test__rgb_to_xyz__two_dims( self ):
 
         rgb = tf.constant( [ [0.,0.,0.], [ 1., 2., 3.], [ 1., 1., 1.] ] )
+        sft.object_has_shape( [3,3], rgb )
         exampleY = 1*.2126729 + 2*.7151522 + 3 * .0711750
 
         # invocation
@@ -573,6 +551,7 @@ class test_land_and_sea(unittest.TestCase):
     def test__rgb_to_xyz__three_dims( self ):
 
         rgb = tf.constant( [ [ [0.,0.,0.], [ 1., 2., 3.], [ 1., 1., 1.] ] ] )
+        sft.object_has_shape( [1,3,3], rgb )
         exampleY = 1*.2126729 + 2*.7151522 + 3 * .0711750
 
         # invocation
@@ -586,6 +565,7 @@ class test_land_and_sea(unittest.TestCase):
     def test__rgb_to_xyz__four_dims( self ):
 
         rgb = tf.constant( [ [ [ [0.,0.,0.], [ 1., 2., 3.], [ 1., 1., 1.] ] ] ] )
+        sft.object_has_shape( [1,1,3,3], rgb )
         exampleY = 1*.2126729 + 2*.7151522 + 3 * .0711750
 
         # invocation
@@ -599,6 +579,7 @@ class test_land_and_sea(unittest.TestCase):
     def test__rgb_to_xyz__five_dims( self ):
 
         rgb = tf.constant( [ [ [ [ [0.,0.,0.], [ 1., 2., 3.], [ 1., 1., 1.] ] ] ] ] )
+        sft.object_has_shape( [1,1,1,3,3], rgb )
         exampleY = 1*.2126729 + 2*.7151522 + 3 * .0711750
 
         # invocation
@@ -615,6 +596,7 @@ class test_land_and_sea(unittest.TestCase):
     def test__rgb_to_yuv( self ):
 
         rgb = tf.constant( [ 1., 1., 1.] )
+        sft.object_has_shape( [3], rgb )
         exampleY = 1*0.299 + 1*0.587 + 1*0.114      # approx = 1.0
 
         # invocation
@@ -629,6 +611,7 @@ class test_land_and_sea(unittest.TestCase):
     def test__rgb_to_yuv__two_dims( self ):
 
         rgb = tf.constant( [ [0.,0.,0.], [ 1., 2., 3.], [ 1., 1., 1.] ] )
+        sft.object_has_shape( [3,3], rgb )
         exampleY = 1*0.299 + 1*0.587 + 1*0.114      # approx = 1.0
 
         # invocation
@@ -642,6 +625,7 @@ class test_land_and_sea(unittest.TestCase):
     def test__rgb_to_yuv__three_dims( self ):
 
         rgb = tf.constant( [ [ [0.,0.,0.], [ 1., 2., 3.], [ 1., 1., 1.] ] ] )
+        sft.object_has_shape( [1,3,3], rgb )
         exampleY = 1*0.299 + 1*0.587 + 1*0.114      # approx = 1.0
 
         # invocation
@@ -655,6 +639,7 @@ class test_land_and_sea(unittest.TestCase):
     def test__rgb_to_yuv__four_dims( self ):
 
         rgb = tf.constant( [ [ [ [0.,0.,0.], [ 1., 2., 3.], [ 1., 1., 1.] ] ] ] )
+        sft.object_has_shape( [1,1,3,3], rgb )
         exampleY = 1*0.299 + 1*0.587 + 1*0.114      # approx = 1.0
 
         # invocation
@@ -668,6 +653,7 @@ class test_land_and_sea(unittest.TestCase):
     def test__rgb_to_yuv__five_dims( self ):
 
         rgb = tf.constant( [ [ [ [ [0.,0.,0.], [ 1., 2., 3.], [ 1., 1., 1.] ] ] ] ] )
+        sft.object_has_shape( [1,1,1,3,3], rgb )
         exampleY = 1*0.299 + 1*0.587 + 1*0.114      # approx = 1.0
 
         # invocation

@@ -21,7 +21,7 @@ from tensorflow import image, keras
 
 from land_and_sea_functions import *
 from _utilities.tf_tensor_tools import *
-from cycle_gan.tf_layer_tools import *
+from _utilities.tf_layer_tools import *
 
 # tf.compat.v1.enable_eager_execution()
 
@@ -29,7 +29,7 @@ print(tf.__version__)
 
 plt.ion()
 
-# set_terrain_type_goal( [0.7,0.3] )
+# set_terrain_type_goal( [0.5,0.3,0.1,0.1] )
 # set_terrain_surface_goal( 0.2 )
 
 IMAGE_CHANNELS = 3
@@ -59,10 +59,15 @@ print("object_features=",tf.shape(object_features))
 
 #######################################################################
 
-features = object_features # + random_features # + terrain_features
-template_image_set = image_to_template( features )
+features_linear = object_features # + random_features # + terrain_features
+template_image_set_linear = image_to_template( features_linear )
 
-tf.random.shuffle( features, 12345 )
+# shuffle with same seed
+tf.random.set_seed( 12345 )
+features = tf.random.shuffle( features_linear  )
+tf.random.set_seed( 12345 )
+template_image_set = tf.random.shuffle( template_image_set_linear )
+
 tflen = len(features)
 train_segment = (int)(tflen * .8)
 print("train_segment=",train_segment)

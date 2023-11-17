@@ -2,7 +2,7 @@ import os
 import os
 
 def set_environment():
-    os.putenv( 'TERRAIN_TYPE_GOAL', '[0.7,0.3]' )
+    os.putenv( 'TERRAIN_TYPE_GOAL', '[0.5, 0.3, 0.1, 0.1]' )
     os.putenv( 'TERRAIN_SURFACE_GOAL', '0.2' )
     return
 

@@ -13,5 +13,5 @@ directly learnable.
 I am going to create an intermediate training layer that is simply 
 a progression of 100 neurons that are sequentially on or off depending 
 on the ratio I am trying to express.   If that is trainable, then I 
-will tray adding some 'randomizing' logic past that to get something 
+will try adding some 'randomizing' logic past that to get something 
 more interesting which still has the ratio.
