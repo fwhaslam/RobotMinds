@@ -263,16 +263,12 @@ class test_land_and_sea(unittest.TestCase):
 
     def test__terrain_certainty_loss__completely_certain(self):
 
-        # logits to [[1,0],[1,0]]
-        element = [[[0.0,1.0],
-                    [1.0,0.0]],
-                   [[0.0,1.0],
-                    [1.0,0.0]]]
-        # batch_size=2, wide/tall=2x2, types=2
-        input = tf.constant( [element,element]  )
+        # logits to [[1,0],[1,0]] :: shape ( 2, 2,2, 2 )
+        y_result = tf.constant( 2 * [ 2 * [ [ [ 0., 1.], [ 1., 0. ] ] ] ] )
+        sft.object_has_shape( [2,2,2,2], y_result )
 
         # invocation
-        result = lnz.terrain_certainty_loss( input )
+        result = lnz.terrain_certainty_loss( y_result )
         # print("RESULT=",result)
 
         # assertions
@@ -280,19 +276,13 @@ class test_land_and_sea(unittest.TestCase):
         self.assertEqual( "tf.Tensor([0. 0.], shape=(2,), dtype=float32)", str(result) )
 
     def test__terrain_certainty_loss__completely_uncertain(self):
-        # test terrain_loss
 
-        # logits to [[1,0],[1,1]]
-        element = [[[0.5,0.5],
-                    [0.5,0.5]],
-                   [[0.5,0.5],
-                    [0.5,0.5]]]
-        # batch_size2, wide/tall=2x2, types=2
-        input = tf.constant( [element,element]  )
-        # tf.print("Input=",tf.shape(input))
+        # logits to [[?,?],[?,?]] :: shape ( 2, 2,2, 2 )
+        y_result = tf.constant( 2 * [ 2 * [ 2 * [ [ 0.5, 0.5 ] ] ] ] )
+        sft.object_has_shape( [2,2,2,2], y_result )
 
         # invocation
-        result = lnz.terrain_certainty_loss( input )
+        result = lnz.terrain_certainty_loss( y_result )
         # print("RESULT=",result)
 
         # assertions
@@ -302,16 +292,16 @@ class test_land_and_sea(unittest.TestCase):
     def test__terrain_certainty_loss__half_uncertain(self):
         # test terrain_loss
 
-        # logits to [[?,0],[1,1]]
+        # logits to [[?,0],[1,1]] :: [2,2,2,2]
         element = [[[0.75,0.25],
                     [0.25,0.75]],
                    [[0.25,0.75],
                     [0.75,0.25]]]
         # batch_size2, wide/tall=2x2, types=2
         input = tf.constant( [element,element]  )
-        # tf.print("Input=",tf.shape(input))
+        sft.object_has_shape( [2,2,2,2], input )
 
-        # invocation
+    # invocation
         result = lnz.terrain_certainty_loss( input )
         # print("RESULT=",result)
 

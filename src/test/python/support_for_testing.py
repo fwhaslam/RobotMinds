@@ -1,5 +1,6 @@
 import tensorflow as tf
-import inspect
+from _utilities.tf_tensor_tools import *
+
 
 def loss_has_gradient( loss_function, arg_count=1, output_shape=(1,) ):
     r"""Verify that a loss function does not throw a ValueError"""
@@ -26,3 +27,13 @@ def loss_has_gradient( loss_function, arg_count=1, output_shape=(1,) ):
         if (err.args[-1].find('ValueError: No gradients provided for any variable:')<0):
             raise err     # unknown error occured, re-throw to top
         return False
+
+def object_has_shape( expect_shape, object ):
+    r"""Verify objedct has the expected shape"""
+    try:
+        actual_shape = tensor_to_value( tf.shape( object ) ).tolist()
+        # print("ExpectShape=",expect_shape)
+        # print("ActualShape=",actual_shape)
+        assert ( expect_shape == actual_shape )
+    except Exception as ex:
+        assert False, "could not match expected shape "+str(expect_shape)+" to actual shape"+str(actual_shape)
