@@ -7,24 +7,24 @@ What I have in mind is to tell it about maps for a game.  Instead of giving exam
 I will apply rules that judge the quality of the output.  Will this be an effective 
 technique?  I have no idea.  So far so good.
 
-Step One / v1: land and sea = generate a map similar to old school strategy maps, 
-    with just two types of terrain.  The rules specify the ratios I want to see,
-    and the amount of 'surface' (eg. coastline )
+Step One / v1: land and sea = generate a map similar to old school strategy maps,  
+    with just two types of terrain.  The rules specify the ratios I want to see,  
+    and the amount of 'surface' (eg. coastline )  
 
-Step Two / v2: land, sea, deep, peaks = four types of terrain
-Terrain has a ratio of volumes  The surface goals are defined for terrain pairs.  
-eg.  sea to peak should be zero, land to deep should be zero, etc.
-Dropping some of the less successful models.
-Templates will be constructed based on color similarity between image and ONE_HOT_COLORS
+Step Two / v2: land, sea, deep, peaks = four types of terrain  
+    Terrain has a ratio of volumes  The surface goals are defined for terrain pairs.  
+    eg.  sea to peak should be zero, land to deep should be zero, etc.  
+    Dropping some of the less successful models.  
+    Templates will be constructed based on color similarity between image and ONE_HOT_COLORS  
 
-v3: side step, simplifying to a single 'land ratio' value, 
-    and a random grid for input.  The goal is to make sure 
+v3: use feature 'ratio', and training set of sequential neurons  
+    activated by ratio. ( eg.  ratio 0.5 = first 50 active, second 50 inactive )  
+    Try first with on/off activation.  Try again with softmax.  
+    See if either is trainable, and/or form affects function.  
+
+v4: side step, simplifying to a single 'land ratio' value,
+    and a random grid for input.  The goal is to make sure
     that the ratio of produced land vs sea matches the ratio.
-
-v4: use feature 'ratio', and training set of sequential neurons 
-    activated by ratio. ( eg.  ratio 0.5 = first 50 active, second 50 inactive )
-    Try first with on/off activation.  Try again with softmax.
-    See if either is trainable, and/or form affects function.
 
 attention / embedding ?
 NOTE: attention can be used to reorder things, 
