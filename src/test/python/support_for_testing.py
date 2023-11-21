@@ -1,3 +1,5 @@
+import io
+
 import tensorflow as tf
 from _utilities.tf_tensor_tools import *
 
@@ -37,3 +39,14 @@ def object_has_shape( expect_shape, object ):
         assert ( expect_shape == actual_shape )
     except Exception as ex:
         assert False, "could not match expected shape "+str(expect_shape)+" to actual shape"+str(actual_shape)
+
+def object_to_string( object ):
+    r"""The str() function appears to truncate around 80 characters.
+    This function uses printing without truncation for full verbose assertions.
+    Nothing works.
+    Looks like tf.print() has a major limitation, perhaps due to being GPU bound."""
+    with io.StringIO() as stream:
+        # tf.print( object, output_stream=stream, summarize=-1 )
+        print( object, file=stream )
+        return stream.getvalue()
+    stream.close()
