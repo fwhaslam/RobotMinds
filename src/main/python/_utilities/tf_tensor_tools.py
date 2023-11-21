@@ -29,7 +29,7 @@ def supersoftmax( alpha:tf.Tensor, beta=64. ):
 @tf.function
 def softargmax( alpha:tf.Tensor, beta=64. ):
     r"""Softargmax implementation, applied to last dimension of tensor.
-    Produces results similar to argmax, but is differentiable.
+    This produces results similar to argmax, but is differentiable.
 
     :param alpha: a tensor matrix containing values we want to reduce
     :param beta: exponentiation factor which causes softmax to produce values closer to zero or one.
@@ -56,3 +56,14 @@ def softargmax( alpha:tf.Tensor, beta=64. ):
     # tf.print('softargmax=',softargmax)
     return softargmax
 
+@tf.function
+def simple_ratio( source:tf.Tensor ):
+    r"""Sum and divide on last axis.
+    Simple ratio function.
+    Only works for positive numbers."""
+    shape = tf.shape(source)
+    sums = tf.math.reduce_sum( source, axis = -1 )
+    basep = tf.concat( [shape[0:-1],(1,)], axis=0 )
+    sums = tf.reshape( sums, basep )
+    sums  = tf.repeat( sums, shape[-1], axis = -1 )
+    return source / sums

@@ -9,6 +9,7 @@ import unittest
 
 # module under test
 import _utilities.tf_tensor_tools as teto
+import support_for_testing as sft
 
 
 class test_tf_tensor_tools(unittest.TestCase):
@@ -167,6 +168,32 @@ class test_tf_tensor_tools(unittest.TestCase):
         self.assertAlmostEqual( 0., result[0][1][1][1], places=2 )
         self.assertAlmostEqual( 1., result[0][1][1][2], places=2 )
 
+########################################################################################################################
+
+    def test__simple_ratio__2dims(self):
+
+        input = 3 * [ [1.,2.,5.] ]
+        sft.object_has_shape( [3,3], input )
+        result = teto.simple_ratio( input )
+        self.assertEqual(
+            "tf.Tensor(\n"
+            "[[0.125 0.25  0.625]\n"
+            " [0.125[62 chars]t32)", str(result) )
+
+    def test__simple_ratio__3dims(self):
+
+        input = 2 * [ 2 * [ [1.,0.,0.,1.] ] ]
+        sft.object_has_shape( [2,2,4], input )
+
+        result = teto.simple_ratio( input )
+        self.assertEqual(
+            "tf.Tensor(\n"
+            "[[[0.5 0.  0.  0.5]\n"
+            "  [0.5 0.  0.  0.5]]\n"
+            "[73 chars]t32)", str(result) )
+
+
+########################################################################################################################
 
 if __name__ == '__main__':
     unittest.main()
