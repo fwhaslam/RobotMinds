@@ -8,17 +8,12 @@ import sys
 sys.path.append('../..')
 
 # common
-import os as os
-import numpy as np
-import random as rnd
-from pathlib import Path
 # import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
 # tensorflow
 import tensorflow as tf
-
 # according to the designers, the only supported import method is to use 'tf.component'
 #       so import image, keras =>  tf.image and tf.keras
 # from tensorflow import image, keras
@@ -29,6 +24,7 @@ import tensorflow as tf
 # from cycle_gan.tf_layer_tools import *
 import _utilities.tf_tensor_tools as teto
 import _utilities.tf_loading_tools as loto
+from gaussian_layer import GaussianLayer
 
 
 # tf.compat.v1.enable_eager_execution()
@@ -37,161 +33,163 @@ print(tf.__version__)
 
 plt.ion()
 
-SAMPLE_COUNT = 1000
-TERRAIN_TYPE_COUNT = 2
-TERRAIN_ONE_HOT_COLOR = tf.constant( ((0,255,0),(0,0,255)) )
+def prepare_globals():
 
-WIDE = 10
-TALL = 10
+    global EPOCHS, BATCH_SIZE, SAMPLE_COUNT
+    # EPOCHS = 5 # 50
+    # BATCH_SIZE= 2 #1000
+    # SAMPLE_COUNT = 8    # 1000
+    EPOCHS = 50
+    SAMPLE_COUNT = None     # calculated when producing feature_set
+    BATCH_SIZE= 1000
 
-INPUT_SHAPE = ( TERRAIN_TYPE_COUNT )
-IMAGE_SHAPE = ( WIDE, TALL )
-IMAGE_UNITS = IMAGE_SHAPE[0] * IMAGE_SHAPE[1]
+    global TERRAIN_TYPE_COUNT, TERRAIN_ONE_HOT_COLOR, TT_SEA,TT_SAND,TT_GRASS,TT_HILLS
+    TERRAIN_TYPE_COUNT = 4
+    TT_SEA = 0
+    TT_SAND = 1
+    TT_GRASS = 2
+    TT_HILLS = 3
+    TERRAIN_ONE_HOT_COLOR = tf.constant( ( ( (0,0,255)),(255,255,0),(0,255,0),(128,128,128) ) )
 
-OUTPUT_SHAPE = ( WIDE, TALL, TERRAIN_TYPE_COUNT )
-OUTPUT_UNITS = OUTPUT_SHAPE[0] * OUTPUT_SHAPE[1] * OUTPUT_SHAPE[2]
-# MAP_SHAPE =  ( 1, 2)
-# IMAGE_RESIZE = list(INPUT_SHAPE[:2])     #  [wide,tall]
+    global WIDE, TALL
+    WIDE = 10
+    TALL = 10
 
-EPOCHS = 50
-BATCH_SIZE=100
+    global INPUT_SHAPE, IMAGE_SHAPE, IMAGE_UNITS
+    INPUT_SHAPE = ( TERRAIN_TYPE_COUNT )
+    IMAGE_SHAPE = ( WIDE, TALL )
+    IMAGE_UNITS = IMAGE_SHAPE[0] * IMAGE_SHAPE[1]
 
-flavor = "feature2random"
+    global OUTPUT_SHAPE, OUTPUT_UNITS
+    OUTPUT_SHAPE = ( WIDE, TALL, TERRAIN_TYPE_COUNT )
+    OUTPUT_UNITS = OUTPUT_SHAPE[0] * OUTPUT_SHAPE[1] * OUTPUT_SHAPE[2]
+
+    global flavor, ckpt_folder, lastFigure
+    flavor = "feature2random"
+    ckpt_folder = 'landnsea_ckpt/v2/ratio_random'
+    lastFigure = None       # record the last displayed figure so it can be closed automatically
+
 
 #######################################################################
-#   Random Image Dataset
 
-# def random_image(wide,tall,channels):
-#     r"""Create a grid of floats in range [0-1)."""
-#     grid = np.empty((wide,tall,channels))
-#     for col in grid:
-#         for row in range(tall):
-#             for chan in range(channels):
-#                 col[row][chan] = rnd.random()
-#     return grid
-#
-# def load_random_features( count ):
-#     features = np.empty((count,) + INPUT_SHAPE)
-#     for index in range(count):
-#         features[index] = random_image(*INPUT_SHAPE)
-#     return features
+def append_inverse( features ):
+    r"""Append in 'inverted' set of values to the one dimensional input tensor."""
+    inverse = 1. - np.array( features )
+    return tf.concat( [features, inverse ], axis=-1 )
 
-def load_features( count ):
+
+def input_transform( features ):
+    r"""Transform to feature set applied to training, testing and example feature sets."""
+    return features
+    #return append_inverse( features )
+
+#######################################################################
+#   Training Dataset
+
+def terrain_type_feature_count( depth:int, ratio_steps:int ):
     r"""
-    shape = [batch,N] ( initially N=2 )
-    :param count:
+    Given a number of steps for the ratio, and a depth ( = terrain_count )
+    :param depth: terrain type count
+    :param ratio_steps: how many steps in the ratio ( eg. value of 0/10 -> 10/10 is 11 steps )
     :return:
     """
-    shape = ( count, INPUT_SHAPE )
+    if (depth==1):
+        return ratio_steps
+    else:
+        return terrain_type_feature_count( depth-1, ratio_steps+1 ) * ratio_steps / depth
+
+
+def terrain_type_ratios( fill, depth:int, ratio_steps:int, steps_held:int=0, index:int=0, tuple=() ):
+    r"""
+
+    :param fill: the array that needs filling ( batch, type_count )
+    :param depth: the type_count
+    :param ratio_steps: how many steps in the ratio ( eg. value of 0/10 -> 10/10 is 11 steps )
+    :return:
+    """
+
+    for steps in range( (int) ( ratio_steps - steps_held ) ):
+        feature = steps * 1. / ( ratio_steps - 1. )
+        work = tuple + (feature,)
+        if (depth==1):
+            fill[ index ] = work
+            index += 1
+        else:
+            index = terrain_type_ratios( fill, depth-1, ratio_steps, steps_held+steps, index, work )
+
+    return (int)(index)
+
+
+def load_features():
+    r"""
+    type_count = 4  :: so use 4th dim triangle
+    batch = n * (n+1) * (n+2) * (n+3) / ( 4! ) :: fourth dimensional triangle
+    where n = 11 ( because range is [0-10], which is 11 values )
+    shape = [batch,Types] ( initially N=2 )
+    :return:
+    """
+    batch = terrain_type_feature_count( depth=TERRAIN_TYPE_COUNT, ratio_steps=11 )
+    shape = ( (int)(batch), TERRAIN_TYPE_COUNT )
     tf.print("Feature SHAPE=",shape)
     features = np.empty( shape )
-    for index in range(count):          # [ +0.0, +1.0 ]
-        ratio = index / ( count - 1. )
-        features[index][0] = ratio - 0.0
-        features[index][1] = 1. - ratio
+    count = terrain_type_ratios( features, TERRAIN_TYPE_COUNT, 11 )
+    assert (batch==count), "filled the exact right amount in the feature set"
     return features
+
 
 #######################################################################
 
-def feature_to_result( feature ):
-    # tf.print("feature shape=",tf.shape(feature))
-    # tf.print("feature=",feature)
-    ratio = feature       # [ +0.0, +1.0 ]
-    limit = 100 * ratio
-    block = np.empty( IMAGE_SHAPE )
-    for dx in range( TALL ):
-        for dy in range( WIDE ):
-            x = dx * WIDE + dy
-            block[dx][dy] = ( 1. if (x<limit) else 0. )
-    return block
-
-def feature_set_to_result( feature_set ):
+def feature_to_result( feature_set ):
+    r"""Result set has to be same shape as output, even though we only use one tuple set at [0][0]."""
     count = len(feature_set)    # tf.shape( feature_set )[0]
-    shape = ( count, ) + IMAGE_SHAPE
+    shape = ( count, ) + OUTPUT_SHAPE
     tf.print("Output SHAPE=",shape)
     results = np.empty( shape )
     for index in range(count):
-        results[index] = feature_to_result( feature_set[index][0] )
+        results[index][0][0] = feature_set[index]
     return results
 
 #######################################################################
 
-feature_set = load_features( SAMPLE_COUNT )
-print("FeatureSet.shape=",tf.shape(feature_set))
+def prepare_data():
 
-result_set = feature_set_to_result( feature_set )
-print("ResultSet.shape=",tf.shape(result_set))
+    feature_set_linear = load_features()
+    SAMPLE_COUNT = len( feature_set_linear )
+    print("SAMPLE_COUNT=",SAMPLE_COUNT)
+    result_set_linear = feature_to_result( feature_set_linear )
+    feature_set_linear = input_transform( feature_set_linear )
 
-# print("[50]=", feature_to_result( 0. ) );
-# print("[00]=", feature_to_result( -0.5 ) );
-# print("[99]=", feature_to_result( +0.5 ) );
+    # shuffle with same seed
+    tf.random.set_seed( 12345 )
+    feature_set = tf.random.shuffle( feature_set_linear  )
+    tf.random.set_seed( 12345 )
+    result_set = tf.random.shuffle( result_set_linear )
 
-print("fs[000]=", feature_set[0] )
-print("RS[000]=", result_set[0] )
-print("fs[500]=", feature_set[500] )
-print("RS[500]=", result_set[500] )
-print("fs[999]=", feature_set[999] )
-print("RS[999]=", result_set[999] )
-
-
-# scramble with same seed
-tf.random.shuffle(feature_set, 12345)
-tf.random.shuffle(result_set, 12345)
-
-tflen = len(feature_set)
-train_segment = (int)(tflen * .8)
-print("train_segment=",train_segment)
+    tflen = len(feature_set)
+    train_segment = (int)(tflen * .8)
+    print("train_segment=",train_segment)
 
 
-train_data = feature_set[0: train_segment]
-train_result = result_set[0: train_segment]
-test_data = feature_set[train_segment: tflen]
-test_result = result_set[train_segment: tflen]
+    train_data = feature_set[0: train_segment]
+    train_result = result_set[0: train_segment]
+    test_data = feature_set[train_segment: tflen]
+    test_result = result_set[train_segment: tflen]
 
-print("Original len=",tflen)
-print("TrainImage len=", len(train_data))
-print("TestImage len=", len(test_data))
+    print("Original len=",tflen)
+    print("TrainImage len=", len(train_data))
+    print("TestImage len=", len(test_data))
 
-# inspect first image in dataset
-
-lastFigure = None       # record the last displayed figure so it can be closed automatically
+    return train_data, train_result, test_data, test_result
 
 ########################################################################################################################
 # create model
 
-layer_marker = 0
-def make_layer_name(key):
-    global layer_marker
-    layer_marker += 1
-    return key + '-' + str(layer_marker)
-
-# def trim_layer_lrelu(filters,size,strides=1):
-#     result = tf.keras.Sequential(name=make_layer_name('conv2d_norm_lrelu'))
-#     result.add(tf.keras.layers.Conv2D(filters, size, strides=strides, padding='same'))
-#     result.add(InstanceNormalization())
-#     result.add(tf.keras.layers.LeakyReLU())
-#     return result
-#
-# def grow_layer_lrelu(filters,size,strides=1):
-#     result = tf.keras.Sequential(name=make_layer_name('inv_conv2d_norm_lrelu'))
-#     result.add(tf.keras.layers.Conv2DTranspose(filters, size, strides=strides, padding='same'))
-#     result.add(InstanceNormalization())
-#     result.add(tf.keras.layers.Dropout(0.5))
-#     result.add(tf.keras.layers.LeakyReLU())
-#     return result
-#
-# def trim_layer_selu(filters,size,strides=1):
-#     return tf.keras.layers.Conv2D(filters, size, strides=strides, padding='same',activation='selu')
-#
-# def grow_layer_selu(filters,size,strides=1):
-#     return tf.keras.layers.Conv2DTranspose(filters, size, strides=strides, padding='same',activation='selu')
-
-########################################################################################################################
 
 @tf.function
 def vee(x):
     r"""Linear V shape, 0 at x=0, and 1 at x=-1|+1"""
     return tf.where( x<0, -x, x )
+
 
 @tf.function
 def peak(x):
@@ -239,73 +237,145 @@ def terrain_ratio_loss( y_goal_ratios, y_guess ):
 @tf.function
 def terrain_hard_ratio_loss( y_goal_ratios, y_guess ):
 
-    y_hard_guess = teto.supersoftmax( y_guess )
+    y_hard_guess = teto.supersoftmax( y_guess, beta=2. )
     return terrain_ratio_loss( y_goal_ratios, y_hard_guess )
 
+
 @tf.function
-def make_random( shape ):
-    print( "make random shape=", shape )
-    batch = shape[0]
-    if (batch==None):
-        # return tf.placeholder( tf.float32, shape )
-        return tf.keras.Input( shape, dtype=tf.dtypes.float32)
-    return tf.random.normal( shape )
+def terrain_certainty_loss( y_guess ):
+    r"""determine certainty loss :: closer to 0 or 1 than 0.5 is better ---"""
+    # tf.print("input=",y_pred)
+    # tf.print("input.shape=",y_pred.shape)
+    work = 2 * ( y_guess - 0.5 )
+    # tf.print('scaled=',work)
+    work = 1. + peak( work )
+    # tf.print('veed=',work)
+    work = tf.reduce_mean( work, axis=-1 )
+    work = tf.reduce_mean( work, axis=-1 )
+    work = tf.reduce_mean( work, axis=-1 )
+    # tf.print('mean(mean(mean(work)=',work)
+    # tf.map_fn( tf.reduce_mean, work, fn_output_signature=(1,) )
+    # tf.print('reduced(work)=',work)
+    return work
+
+
+@tf.function
+def get_ratio_goals( y_goal ):
+    ratio_goals = tf.slice( y_goal, [0,0,0,0], [-1,1,1,TERRAIN_TYPE_COUNT] )
+    ratio_goals = tf.squeeze( ratio_goals, axis=2 )
+    ratio_goals = tf.squeeze( ratio_goals, axis=1 )
+    return ratio_goals
+
+
+@tf.function
+def terrain_loss( y_goal, y_guess ):
+
+    r"""y_actual is a 2d tensor of soft logits indicating terrain for each tile.
+    In this first draft, 0=sea and 1=land
+    Expected shape is: (batch_size, wide,tall, type_count )
+    Loss is based on count of tile types, which is approximated by summing soft logits.
+    Loss is also based on certainty, which is defined as being close to 0 or 1, not 0.5
+    """
+
+    # reduce to first value pair in the image array
+    ratio_goals = get_ratio_goals( y_goal )
+    # tf.print("RATIO_GOALS=",ratio_goals)
+
+    ratio_loss = terrain_ratio_loss( ratio_goals, y_guess )
+    hard_loss = terrain_hard_ratio_loss( ratio_goals, y_guess )
+    # certainty_loss = terrain_certainty_loss( y_guess )
+    # terrain_loss = terrain_type_loss( sm_y_pred )
+    # surface_loss = terrain_surface_loss( sm_y_pred )
+
+    terrain_loss = ratio_loss + hard_loss
+
+    with tf.GradientTape() as t:
+        # t.watch( template_mse )
+        t.watch( terrain_loss )
+        t.watch( ratio_loss )
+        t.watch( hard_loss )
+        # t.watch( certainty_loss )
+        # t.watch( surface_loss )
+
+    # tf.print("TerrainLoss=",terrain_loss)
+    return terrain_loss
+
+# @tf.function
+# def make_random( shape ):
+#     print( "make random shape=", shape )
+#     batch = shape[0]
+#     if (batch==None):
+#         # return tf.placeholder( tf.float32, shape )
+#         return tf.keras.Input( shape, dtype=tf.dtypes.float32)
+#     return tf.random.normal( shape )
 
 
 def create_model_v1( shape ):
 
-    # input is a dual value [ x, 1-x ]
+    image_units = IMAGE_UNITS
+    decode_units = 4 * TERRAIN_TYPE_COUNT
+
+    # input value, (batch,TERRAIN_TYPE_COUNT)
     x = inputs = tf.keras.Input(shape=shape)
     x = tf.keras.layers.Flatten()(x)
 
-    # decode from single value to array
-    x = tf.keras.layers.Dense( 8, activation='selu', name='expand1')(x)
-    x = tf.keras.layers.Dense( 32, activation='selu', name='expand2')(x)
-    x = tf.keras.layers.Dense( 128, activation='selu', name='expand3')(x)
-    x = tf.keras.layers.Dense( 512, activation='selu', name='expand4')(x)
-    x = tf.keras.layers.Dense( IMAGE_UNITS, activation='selu', name='finale')(x)
+    # decode features into detailed grid
+    x = tf.keras.layers.Dense( 4 * TERRAIN_TYPE_COUNT, activation='selu', name='decode1')(x)
+    x = tf.keras.layers.Dense( 16 * TERRAIN_TYPE_COUNT, activation='selu', name='decode2')(x)
+    # tf.print("x.shape=",x.shape)
+
+    # build array of fixed values ( to be replaced with random )
+    y = inputs
+    y = tf.keras.layers.Dense( IMAGE_UNITS, name='Rando1' )( y )
+    y = GaussianLayer( name='Rando2' )( y )
+    # tf.print("y.shape=",y.shape)
+
+    # join feature encoding to random image
+    x = tf.keras.layers.Concatenate( name='FeatureAndRandom')( [x, y] )
+
+    # two processing layers
+    x = tf.keras.layers.Dense( 64 * TERRAIN_TYPE_COUNT, activation='selu', name='eval1')(x)
+    x = tf.keras.layers.Dense( 128 * TERRAIN_TYPE_COUNT, activation='selu', name='eval2')(x)
 
     # output to 'softmax' which means two values that determine one pixel
-    x = tf.keras.layers.Reshape( IMAGE_SHAPE )(x)
-    x = tf.keras.layers.Activation( 'sigmoid' )(x)
+    x = tf.keras.layers.Dense( OUTPUT_UNITS ,activation='selu', name='reduce')(x)
+    x = tf.keras.layers.Reshape( OUTPUT_SHAPE )(x)
+    x = tf.keras.layers.Activation( 'softmax' )(x)
     outputs = x
 
-    model = tf.keras.Model(inputs=inputs, outputs=outputs,name='basic_model_v1')
-    # model.compile( optimizer=tf.keras.optimizers.Adam(0.001),
-    #                loss=terrain_loss,
-    #                metrics=['accuracy'] )
-    return model
-
-########################################################################################################################
-
-
-model = create_model_v1(INPUT_SHAPE)
-
-ckpt_folder = 'landnsea_ckpt/v3/ratio_random'
-
+    return tf.keras.Model(inputs=inputs, outputs=outputs,name='basic_model_v1')
 
 ########################################################################################################################
 
 def to_display_text( goals, results ):
 
-    ratios = terrain_ratio_loss( goals, results )
-    hards = terrain_hard_ratio_loss( goals, results )
+    goal_ratios = teto.simple_ratio( goals )
+    ratios = terrain_ratio_loss( goal_ratios, results )
+    hards = terrain_hard_ratio_loss( goal_ratios, results )
     # sures = terrain_certainty_loss( results )
+
+    goals_str = tf.strings.as_string( tf.transpose( goals ), precision=0 )
+    # tf.print("goal_str=",goals_str)
+    goals_summary = teto.tensor_to_value( tf.strings.join( goals_str, '-' ) )
+    # tf.print("goals_summary=",goals_summary)
 
     texts = [''] * 9
     for x in range(9):
-        goal = "%.3f" % goals[x][0]
-        # ratio = "%.3f" % teto.tensor_to_value( ratios[x] )
-        # hard = "%.3f" % teto.tensor_to_value( hards[x] )
+        goal = goals_summary[x].decode()
+        ratio = "%.3f" % teto.tensor_to_value( ratios[x] )
+        hard = "%.3f" % teto.tensor_to_value( hards[x] )
         # sure = "%.3f" % teto.tensor_to_value( sures[x] )
-        texts[x] = "G="+goal    # +"\nR="+ratio+" - H="+hard
-
-    return  texts
+        texts[x] = "G="+goal+"\nR="+ratio+" - H="+hard
+    return texts
 
 
 def to_display_image( image_values, one_hot_color ):
 
-    onehot = tf.round( image_values )
+    onehot = image_values
+    # tf.print('work/squeeze=',tf.shape(work))
+
+    onehot = teto.supersoftmax( onehot )
+    onehot = tf.round( onehot )
     # tf.print('work/round=',work)
     onehot = tf.cast(onehot, tf.int32)
     # tf.print('work/cast=',work)
@@ -335,33 +405,12 @@ def display_text_and_image( texts, images ):
     plt.pause( 500 )
     return
 
-def simple_activation_to_one_hot( results ):
-
-    work_shape = tf.shape( results)
-    print("DISPLAY IMAGE NEW work_shape = ",work_shape)
-    if ( 4 == len( work_shape ) ):
-        return results
-
-    shape = np.append( work_shape, TERRAIN_TYPE_COUNT )
-    print("DISPLAY IMAGE NEW RATIO = ",shape)
-
-    work = np.empty( shape )
-    for b in range( shape[0] ):
-        for x in range(IMAGE_UNITS):
-            dx = (int)(x/WIDE)
-            dy = x%WIDE
-            ratio = results[b][dx][dy]
-            work[b][dx][dy][0] = ratio
-            work[b][dx][dy][1] = 1. - ratio
-
-    return work
-
-
 def display_results( sample_goals ):
 
     # assume 9 values
-    results = model( sample_goals )
-    results = simple_activation_to_one_hot( results )
+    ratios = teto.simple_ratio( sample_goals )
+    ratios = input_transform( ratios )
+    results = model( ratios )
     display = to_display_image( results, TERRAIN_ONE_HOT_COLOR )
 
     # for x in range(9):
@@ -372,6 +421,8 @@ def display_results( sample_goals ):
     display_text_and_image(text, display)
 
 
+########################################################################################################################
+
 def run(model,
         train_data, train_result,
         test_data, test_result,
@@ -381,7 +432,7 @@ def run(model,
 
     model.compile(
         optimizer = tf.keras.optimizers.Adam(0.001),
-        loss = 'mean_squared_error',
+        loss = terrain_loss,
         metrics = ['accuracy'] )
 
     loto.try_load_weights( ckpt_folder, model )
@@ -406,18 +457,31 @@ def run(model,
 
 
 ########################################################################################################################
+# run from command line, but not from test
 
-run( model, train_data, train_result, test_data, test_result, ckpt_folder )
+if __name__ == '__main__':
 
-########################################################################################################################
+    prepare_globals()
 
-work = np.empty( (9,TERRAIN_TYPE_COUNT) )
-for index in range(9):
-    ratio = index / 8.
-    work[index][0] = ratio - 0.0
-    work[index][1] = 1. - ratio
+    train_data, train_result, test_data, test_result = prepare_data()
 
-sample_goals = tf.constant( work )
+    model_shape = tf.shape( train_data )[1:]
+    model = create_model_v1( model_shape )
 
-display_results(sample_goals)
+    run( model, train_data, train_result, test_data, test_result, ckpt_folder )
+
+    index = -1
+    work = np.empty( (9,TERRAIN_TYPE_COUNT) )
+    work[0] = [ 1., 0., 0., 0. ]
+    work[1] = [ 1., 1., 0., 0. ]
+    work[2] = [ 1., 1., 1., 0. ]
+    work[3] = [ 1., 1., 1., 1. ]
+    work[4] = [ 1., 1., 1., 2. ]
+    work[5] = [ 1., 1., 2., 4. ]
+    work[6] = [ 1., 2., 4., 8. ]
+    work[7] = [ 1., 0., 0., 2. ]
+    work[8] = [ 1., 0., 0., 5. ]
+    sample_goals = tf.constant( work )
+
+    display_results(sample_goals)
 
