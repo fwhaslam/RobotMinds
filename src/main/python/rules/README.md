@@ -26,6 +26,15 @@ v4: side step, simplifying to a single 'land ratio' value,
     and a random grid for input.  The goal is to make sure
     that the ratio of produced land vs sea matches the ratio.
 
+v5: larger image, stand-alone gaussian layer, rivers and roads, save/load state
+    sea stick to edge ( coastline ), sea stick to sea
+    tools to calculate all feature combinations for examples
+    tools to convert feature set to examples and back
+    TODO: 
+        replace example set with ALL possible examples, with a random selection ( since combos are explosive )
+        ensure that 'random' layer affects results
+        
+
 attention / embedding ?
 NOTE: attention can be used to reorder things, 
     which in two dimensions means transform an image ...?
