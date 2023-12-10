@@ -1,4 +1,6 @@
 import tensorflow as tf
+import numpy as np
+
 print("TensorFlow version:", tf.__version__ )
 
 # from tensorflow.python.ops.numpy_ops import np_config
@@ -8,9 +10,57 @@ tf.experimental.numpy.experimental_enable_numpy_behavior()
 
 def tensor_to_value( some_tensor:tf.Tensor ):
     r"""Extract tensor value.  This will return the value of the tensor in the same shape as the tensor."""
+
     if some_tensor is None: return None
     if tf.executing_eagerly(): return some_tensor.numpy()
     return some_tensor.eval()
+
+@DeprecationWarning   # this is not ready for use
+def tensor_to_string( some_tensor:tf.Tensor ):
+    r"""Produce a non-truncated string representing the tensor.
+    Beware, this may be VERY large.
+    This is primarily used by verbose testing."""
+
+    # return np.array_str( some_tensor.numpy() )
+    # return np.array2string( some_tensor.numpy(), threshold = np.inf)
+    return np.array2string( some_tensor.numpy(), threshold = 1000)
+
+@DeprecationWarning   # this is not ready for use
+def tensor_assert_string( some_tensor:tf.Tensor, precision=2 ):
+    r"""Produce a non-truncated string representing the tensor.
+    Beware, this may be VERY large.
+    This is primarily used by verbose testing."""
+
+    # work = tf.strings.as_string( some_tensor )
+    # return tf.strings.join( work, separator=" " )
+
+    return tf.map_fn( )
+
+@DeprecationWarning   # this is not ready for use
+def tensor_string_formatter( some_tensor:tf.Tensor ):
+    r"""Appied recursively to each level of the tensor.
+    At the last level it produces strings, above that it formats as array."""
+
+    depth = tf.shape(some_tensor).size
+
+    if (depth==0):
+        return tf.strings.as_string( some_tensor ).numpy().decode("utf-8")
+
+    elif (depth==1):
+        str_list = tf.strings.as_string( some_tensor )
+        str_join = [ tf.strings.join( str_list, " " ) ]
+        str_add = tf.concat( [ tf.constant( ["["] ), str_join, tf.constant( ["]"] ) ], axis=0 )
+        str_merge = tf.strings.join( str_add )
+        return str_merge.numpy().decode("utf-8")
+
+    else:
+        line_list = tf.map_fn( lambda x: tensor_string_formatter(x), some_tensor )
+        str_join = [ tf.strings.join( line_list, "\n" ) ]
+        str_add = tf.concat( [ tf.constant( ["["] ), str_join, tf.constant( ["]"] ) ], axis=0 )
+        str_merge = tf.strings.join( str_add )
+        return str_merge.numpy().decode("utf-8")
+
+########################################################################################################################
 
 @tf.function
 def supersoftmax( alpha:tf.Tensor, beta=64. ):

@@ -17,18 +17,58 @@ class test_tf_tensor_tools(unittest.TestCase):
     def test__tensor_to_value__single(self):
         some_tensor = tf.constant( 4.5 )
         result = teto.tensor_to_value(some_tensor)
-        self.assertEquals( '4.5', str(result) )
+        self.assertEqual( '4.5', str(result) )
 
     def test__tensor_to_value__1dim(self):
         some_tensor = tf.constant( [4.5] )
         result = teto.tensor_to_value(some_tensor)
-        self.assertEquals( '[4.5]', str(result) )
+        self.assertEqual( '[4.5]', str(result) )
 
     def test__tensor_to_value__2dim(self):
         some_tensor = tf.constant( [[7.0],[4.5]] )
         result = teto.tensor_to_value(some_tensor)
-        self.assertEquals( '[[7. ]\n'
+        self.assertEqual( '[[7. ]\n'
                            ' [4.5]]', str(result) )
+
+    def test__tensor_to_string__single_value(self):
+        some_tensor = tf.constant( 4.5 )
+        result = teto.tensor_to_string(some_tensor)
+        self.assertEqual( '4.5', result )
+
+    def test__tensor_to_string__one_dim(self):
+        some_tensor = tf.constant( [1,2] )
+        result = teto.tensor_to_string(some_tensor)
+        self.assertEqual( '[1 2]', result )
+
+    def test__tensor_to_string__two_dim(self):
+        some_tensor = tf.constant( [[1,2],[3,4]] )
+        result = teto.tensor_to_string(some_tensor)
+        self.assertEqual( '[[1 2]\n [3 4]]', result )
+
+    def test__tensor_assert_string__one_dim(self):
+        some_tensor = tf.constant( [1,2] )
+        result = teto.tensor_assert_string(some_tensor)
+        self.assertEqual( '[1 2]', str(result) )
+
+    def test__tensor_assert_string__two_dim(self):
+        some_tensor = tf.constant( [[1,2],[3,4]] )
+        result = teto.tensor_assert_string(some_tensor)
+        self.assertEqual( '[[1 2]\n [3 4]]', str(result) )
+
+    def test__tensor_string_formatter__zero_dim(self):
+        some_tensor = tf.constant( 1 )
+        result = teto.tensor_string_formatter(some_tensor)
+        self.assertEqual( '1', str(result) )
+
+    def test__tensor_string_formatter__one_dim(self):
+        some_tensor = tf.constant( [1,2] )
+        result = teto.tensor_string_formatter(some_tensor)
+        self.assertEqual( '[1 2]', str(result) )
+
+    def test__tensor_string_formatter__two_dim(self):
+        some_tensor = tf.constant( [[1,2],[3,4]] )
+        result = teto.tensor_string_formatter(some_tensor)
+        self.assertEqual( '[[1 2]\n [3 4]]', str(result) )
 
 ########################################################################################################################
 
@@ -176,21 +216,24 @@ class test_tf_tensor_tools(unittest.TestCase):
         sft.object_has_shape( [3,3], input )
         result = teto.simple_ratio( input )
         self.assertEqual(
-            "tf.Tensor(\n"
             "[[0.125 0.25  0.625]\n"
-            " [0.125[62 chars]t32)", str(result) )
+            " [0.125 0.25  0.625]\n"
+            " [0.125 0.25  0.625]]", teto.tensor_to_string(result) )
 
     def test__simple_ratio__3dims(self):
 
         input = 2 * [ 2 * [ [1.,0.,0.,1.] ] ]
         sft.object_has_shape( [2,2,4], input )
 
+        # invocation
         result = teto.simple_ratio( input )
+
+        # assertion
         self.assertEqual(
             "tf.Tensor(\n"
             "[[[0.5 0.  0.  0.5]\n"
             "  [0.5 0.  0.  0.5]]\n"
-            "[73 chars]t32)", str(result) )
+            "[73 chars]t32)", teto.tensor_to_string(result) )
 
 
 ########################################################################################################################
