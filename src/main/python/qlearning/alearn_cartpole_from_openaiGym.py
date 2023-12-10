@@ -39,6 +39,7 @@ initial_epsilon = 1.
 final_epsilon = 0       # 0.01
 
 REPLAY_MEMORY = 3_000 # 10_000
+STATE_SHAPE = (5,)      # cartpole observation/state is 4 floats, and I add one basis value
 
 VERSION = 3     # selects from model_function and reward_function
 
@@ -142,6 +143,12 @@ scores[400:500] max=10.0,med=8.0 avg=8.32 std=0.76
 
     return tf.keras.Model(inputs=inputs, outputs=outputs,name='model_v4')
 
+########################################################################################################################
+
+def observation_to_state( observation ):
+    r"""Observation is 4 float values.  State includes a BASIS value."""
+    return np.append( observation, 1. )
+
 FIRST = tf.constant( [1,0] )
 SECOND = tf.constant( [0,1] )
 
@@ -191,8 +198,7 @@ def train_model( model, replay_buffer ):
 if __name__ == '__main__':
 
     env = gym.make('CartPole-v1')
-    shape = (4,)        # array of 4 floating point numbers
-    model = model_function[VERSION]( shape )
+    model = model_function[VERSION]( STATE_SHAPE )
     model.summary()
 
     optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
@@ -207,7 +213,8 @@ if __name__ == '__main__':
     for episode_id in range(num_episodes):
 
         # state = env.reset()     # older version
-        state, info = env.reset()     # v0.26.2
+        observation, info = env.reset()     # v0.26.2
+        state = observation_to_state( observation )
 
         epsilon = max(
             initial_epsilon * (num_exploration_episodes - episode_id) / num_exploration_episodes,
@@ -223,13 +230,14 @@ if __name__ == '__main__':
 
             # invoke the game environment
             # next_state, reward, done, info = env.step(action)   # older version
-            next_state, reward, terminated, truncated, info = env.step(action)     # v0.26.2
+            next_observation, reward, terminated, truncated, info = env.step(action)     # v0.26.2
             reward = reward_function[VERSION]( time_step, reward )
 
             if terminated or truncated:
-                next_state, info = env.reset()
+                next_observation, info = env.reset()
                 scores[ episode_id ] = time_step
             done = terminated or truncated          # conversion to older values: done, next_state
+            next_state = observation_to_state( next_observation )
 
             # Game Over?
             reward = -10. if done else reward
