@@ -35,12 +35,13 @@ plt.ion()
 
 def prepare_globals():
 
-    global EPOCHS, BATCH_SIZE, SAMPLE_COUNT
+    global EPOCHS, BATCH_SIZE, SAMPLE_COUNT, ADDITIONAL_FEATURES
     # EPOCHS = 5 # 50
     # BATCH_SIZE= 2 #1000
     # SAMPLE_COUNT = 8    # 1000
+    ADDITIONAL_FEATURES = 2    # sea_edge, sea_sticky
     EPOCHS = 50
-    SAMPLE_COUNT = None     # calculated when producing feature_set
+    SAMPLE_COUNT = 10000
     BATCH_SIZE= 1000
 
     global TERRAIN_TYPE_COUNT, TERRAIN_ONE_HOT_COLOR, TT_SEA,TT_SAND,TT_GRASS,TT_HILLS,TT_RIVER,TT_ROAD
@@ -67,7 +68,7 @@ def prepare_globals():
     global INPUT_SHAPE, IMAGE_SHAPE, FEATURE_COUNT
     INPUT_SHAPE = ( TERRAIN_TYPE_COUNT )
     IMAGE_SHAPE = ( WIDE, TALL )
-    FEATURE_COUNT = TERRAIN_TYPE_COUNT
+    FEATURE_COUNT = TERRAIN_TYPE_COUNT + ADDITIONAL_FEATURES
 
     global OUTPUT_SHAPE, OUTPUT_UNITS
     OUTPUT_SHAPE = ( WIDE, TALL, TERRAIN_TYPE_COUNT )
@@ -170,58 +171,32 @@ def sample_to_feature( samples, feature_size, axis ):
     return result
 
 #######################################################################
-#   Training Dataset
+#   Training Dataset :: random sampling of valid combinations
+#######################################################################
 
-def terrain_type_feature_count( depth:int, ratio_steps:int ):
-    r"""
-    Given a number of steps for the ratio, and a depth ( = terrain_count )
-    :param depth: terrain type count
-    :param ratio_steps: how many steps in the ratio ( eg. value of 0/10 -> 10/10 is 11 steps )
-    :return:
-    """
-    if (depth==1):
-        return ratio_steps
-    else:
-        return terrain_type_feature_count( depth-1, ratio_steps+1 ) * ratio_steps / depth
-
-
-def terrain_type_ratios( fill, depth:int, ratio_steps:int, steps_held:int=0, index:int=0, tuple=() ):
+def build_examples( count, depth ):
     r"""
 
-    :param fill: the array that needs filling ( batch, type_count )
-    :param depth: the type_count
-    :param ratio_steps: how many steps in the ratio ( eg. value of 0/10 -> 10/10 is 11 steps )
-    :return:
+    :param count: number of samples
+    :param depth: number of features in each sample
     """
+    generator = tf.random.Generator.from_non_deterministic_state()
 
-    for steps in range( (int) ( ratio_steps - steps_held ) ):
-        feature = steps * 1. / ( ratio_steps - 1. )
-        work = tuple + (feature,)
-        if (depth==1):
-            fill[ index ] = work
-            index += 1
-        else:
-            index = terrain_type_ratios( fill, depth-1, ratio_steps, steps_held+steps, index, work )
+    terrain_shape = ( count, TERRAIN_TYPE_COUNT )
+    feature_shape = ( count, depth-TERRAIN_TYPE_COUNT )
+    tf.print("terrain_shape=",terrain_shape)
+    tf.print("feature_shape=",feature_shape)
 
-    return (int)(index)
+    # uniform for all features, including terrain ratios
+    terrains = generator.uniform( shape=terrain_shape, minval=0., maxval=1. )
+    features = generator.uniform( shape=feature_shape, minval=0., maxval=1. )
 
+    # the first TERRAIN_COUNT features need to be normalized to a sum of one
+    terrains = tf.linalg.normalize( terrains, axis=1)[0]
+    tf.print( "terrains.shape=", tf.shape(terrains) )
 
-def load_features():
-    r"""
-    type_count = 4  :: so use 4th dim triangle
-    batch = n * (n+1) * (n+2) * (n+3) / ( 4! ) :: fourth dimensional triangle
-    where n = 11 ( because range is [0-10], which is 11 values )
-    shape = [batch,Types] ( initially N=2 )
-    :return:
-    """
-    combos = terrain_type_feature_count( depth=TERRAIN_TYPE_COUNT, ratio_steps=11 )
-    shape = ( (int)(combos), TERRAIN_TYPE_COUNT )
-    tf.print("Feature SHAPE=",shape)
-    features = np.empty( shape )
-    count = terrain_type_ratios( features, TERRAIN_TYPE_COUNT, 11 )
-    assert (combos==count), "did not fill the exact right count in the feature set"
-    return features
-
+    # join and return
+    return tf.concat( [terrains,features], axis=1 )
 
 #######################################################################
 
@@ -240,8 +215,7 @@ def feature_set_to_sample_set(feature_set):
 
 def prepare_data():
 
-    feature_set_linear = load_features()
-    SAMPLE_COUNT = len( feature_set_linear )
+    feature_set_linear = build_examples( SAMPLE_COUNT, FEATURE_COUNT )
     print("SAMPLE_COUNT=",SAMPLE_COUNT)
     result_set_linear = feature_set_to_sample_set(feature_set_linear)
     feature_set_linear = input_transform( feature_set_linear )
@@ -326,6 +300,7 @@ def terrain_type_near_edge_loss( ttype_index, y_guess ):
     all_type_sum = tf.reduce_sum( all_type_logits, [-3,-2,-1] )
     # tf.print("all_type_sum=",str(all_type_sum) )
 
+    # TODO: 'ideal' comes from FEATURES[-2]
     ideal = 1.3 * EDGE_RATIO
     ratio = edge_type_sum / tf.clip_by_value( all_type_sum, 1., EDGE_COUNT )
     # tf.print("ratio=",ratio)
@@ -376,6 +351,7 @@ def terrain_type_sticky_loss( ttype_index, y_guess ):
     diff_avg = ( diffh + diffv ) / 2.
     # tf.print('diff_avg=',diff_avg)
 
+    # TODO: 'ideal' comes from FEATURES[-1]
     ideal = 0.3
     ratio = diff_avg / tf.clip_by_value( all_type_sum, 1., GRID_UNITS )
     # tf.print("ratio=",ratio)
@@ -443,6 +419,8 @@ def terrain_loss( y_goal, y_guess ):
 #         return tf.keras.Input( shape, dtype=tf.dtypes.float32)
 #     return tf.random.normal( shape )
 
+
+########################################################################################################################
 
 def create_model_v1( shape ):
 

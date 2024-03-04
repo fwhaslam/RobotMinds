@@ -20,7 +20,7 @@ import contextlib, io
 import lnz_ratio_run_local as lnz
 
 
-class test_lnz_ratio_run_local(unittest.TestCase):
+class test_lnz_rules_training_run_local(unittest.TestCase):
 
     def setUp(self):
         lnz.prepare_globals()
